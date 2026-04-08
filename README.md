@@ -1,6 +1,100 @@
 # auto-wiki
 
-[English](README.md) | [中文](README.zh.md)
+<details>
+<summary><b>🇨🇳 点击切换中文版</b></summary>
+
+---
+
+教你的 AI Agent 构建和维护持久化知识 wiki——让它不再做完就忘。
+
+![RAG vs 编译](docs/figure/01rag.png)
+
+### 问题
+
+AI Agent 做研究、写报告、拉数据——然后全忘了。下周问同样领域的问题，又从零开始。RAG 能检索，但不能积累——每次都从原始文档重新推导答案。
+
+### 方案
+
+auto-wiki 是一个给 AI Agent（Claude Code、Codex 等）用的 Skill。装上之后，Agent 会自己维护一个 wiki：读到新材料就和已有页面比对，该更新的更新，说法矛盾的标出来，数据变了的记下演化过程。
+
+四个模式：
+
+| 模式 | 触发 | Agent 做什么 |
+|------|------|-------------|
+| **recall** | `/auto-wiki recall {topic}` | 加载 wiki 上下文，后续所有问题先查 wiki 再回答 |
+| **ingest** | `/auto-wiki ingest` 或提供源材料 | 读源文件 → 比较新旧 → 更新/创建页面 → 数据写入 SQLite |
+| **query** | `/auto-wiki query` | 单次查询：搜索 wiki → 综合回答并引用来源 → 识别缺口 |
+| **lint** | `/auto-wiki lint` | 扫描全部页面 → 修复断链 → 检测矛盾 → 报告健康度 |
+
+Agent 也能从自然语言自动路由——"之前研究过 XX"触发 recall，丢给它一篇文件触发 ingest。
+
+### 快速开始
+
+1. 复制 `skill/auto-wiki-cn/`（中文版）或 `skill/auto-wiki-en/`（英文版）到你的 Agent 工作区
+2. 让 Agent 读取 `SKILL.md` 作为指令
+3. 先积累，再使用：
+
+**积累：**
+```
+你：   /auto-wiki ingest
+你：   "研究个人养老金制度，帮我建立知识框架"
+Agent: [搜索政策文件 → 创建 wiki → ingest 2 个来源 → 构建 6 个概念页面]
+
+你：   "找一些关于参与意愿的研究"
+Agent: [搜索 → 找到 3 篇论文 → ingest → 更新已有概念 → 标记 1 处矛盾]
+```
+
+**调用：**
+```
+你：   /auto-wiki recall personal-pension
+Agent: 已进入 recall 模式。当前 wiki：22 页 / 8 数据点 / 2 处 contested。
+
+你：   "政策应该怎么设计来提高参与率？"
+Agent: 根据 [[enrollment-friction]]、[[tax-incentive-effect]] 和 [[ira-usa]]...
+       ⚠️ 注意：税优激励效果存在矛盾（77.8% vs 25%）
+       缺口：尚无 35 岁以下群体行为研究，建议补充。
+```
+
+### 可视化报告
+
+![Report 截图](docs/figure/report-screenshot.png)
+
+*`schema.py --report` 生成的交互式报告：关系图 + 数据表 + 页面列表 + contested 标注*
+
+### Ingest 怎么工作
+
+![Ingest 流程](docs/figure/02ingest.png)
+
+Agent 拿到新材料后，会逐页和 wiki 里已有的内容比对，然后做出判断：
+
+| 结果 | 触发条件 | 动作 |
+|------|---------|------|
+| **强化** | 新信息与已有结论一致 | 追加来源引用，提升 confidence |
+| **更新** | 新信息有更新的日期或更权威的来源 | 改写页面，旧结论进 history |
+| **冲突** | 来源意见不一致，无法判断谁对 | 并列保留，标记 `contested` |
+
+### 领域无关
+
+![架构](docs/figure/03core.png)
+
+Skill 核心与领域无关。领域知识通过插件配置：
+
+- **无种子**：wiki 自由生长，Agent 按所见命名概念
+- **有种子**：Agent 对齐行业标准术语，遵守防混淆规则
+- **有校验器**：lint 检查逻辑一致性
+
+### 致谢
+
+- **[LLM Wiki](https://github.com/swyxio/ai-notes/blob/main/Resources/llmwiki.md)** — 想法由 [Tobi Lutke](https://x.com/tobi/status/1935967165527437666) 提出，[swyx](https://github.com/swyxio) 整理为实现文档
+- **[autoresearch](https://github.com/karpathy/autoresearch)** by Andrej Karpathy
+- **[FIBO](https://spec.edmcouncil.org/fibo/)** by EDM Council · **[fibo-mcp](https://github.com/NeurofusionAI/fibo-mcp)** by NeurofusionAI
+- **[Nuwa](https://github.com/hanlinlibham)** · **[Obsidian](https://obsidian.md/)**
+
+MIT. 见 [LICENSE](LICENSE)。
+
+---
+
+</details>
 
 Teach your AI agent to build and maintain a persistent knowledge wiki — so it stops forgetting what it learned yesterday.
 
@@ -52,15 +146,6 @@ Agent: Based on [[enrollment-friction]], [[tax-incentive-effect]], and [[ira-usa
        Gap: no research on under-35 demographics yet — suggest ingesting more.
 ```
 
-## Language Versions
-
-| Version | Directory | Description |
-|---------|-----------|-------------|
-| Chinese | `skill/auto-wiki-cn/` | Agent protocols in Chinese. Wiki output in Chinese. |
-| English | `skill/auto-wiki-en/` | Agent protocols in English. Wiki output in English. |
-
-Each version is fully self-contained — copy one directory and it works standalone. Python tools (`schema.py`, `store.py`) are identical in both.
-
 ## Architecture
 
 ```
@@ -79,8 +164,6 @@ Each version is fully self-contained — copy one directory and it works standal
 
 - **Markdown pages** — narrative analysis, wikilinks, human-readable. Compatible with [Obsidian](https://obsidian.md/).
 - **SQLite database** — numeric data, time series, relations, history. Queryable.
-
-The agent writes analysis in markdown and data in SQLite. Never the other way around.
 
 ## How Ingest Works
 
@@ -113,31 +196,20 @@ Exit with `exit recall` or by switching to another mode.
 
 The skill core is domain-agnostic. Domain knowledge is pluggable:
 
-```
-auto-wiki-cn/                      (or auto-wiki-en/)
-├── SKILL.md                        # Compilation engine (domain-agnostic)
-├── references/                     # Core protocols (domain-agnostic)
-│   ├── schema.py                   #   Page validation + HTML report
-│   ├── store.py                    #   SQLite data layer
-│   ├── ingest-protocol.md          #   Three-way comparison
-│   ├── wiki-format.md              #   Page structure
-│   └── ...                         #   (12 protocol files total)
-├── seeds/                          # Domain vocabulary (pluggable)
-│   └── fibo-pensions.md            #   Example: pension domain (FIBO standard)
-└── validators/                     # External validators (pluggable)
-    └── fibo-mcp.md                 #   Example: FIBO SPARQL logical validation
-```
-
 - **Without a seed**: wiki grows freely, agent names concepts as it sees fit
 - **With a seed**: agent aligns naming to industry standards, follows anti-confusion rules
 - **With a validator**: lint checks logical consistency against external ontology
 
 ## Visualization
 
+![Report Screenshot](docs/figure/report-screenshot.png)
+
+*Interactive report generated by `schema.py --report`: relation graph + data points + pages + contested markers*
+
 ```bash
 python references/schema.py --report .wiki/my-topic/
 # → generates .wiki/my-topic/_report.html
-# → open in browser: interactive relation graph + data table + coverage gaps
+# → open in browser
 ```
 
 Also works with Obsidian — open `.wiki/` as a vault, graph view renders the wikilink topology automatically.
@@ -173,6 +245,15 @@ This project builds on ideas and inspiration from:
 - **[Nuwa](https://github.com/hanlinlibham)** — a cognitive profiling methodology for extracting mental models, heuristics, and decision patterns from a person's writings and decisions. auto-wiki's cognitive ontology type (`ontology-types/cognitive.md`) was adapted from this approach.
 
 - **[Obsidian](https://obsidian.md/)** — wiki format (YAML frontmatter + `[[wikilinks]]`) is Obsidian-compatible by design. The agent compiles in the background; you browse with Obsidian.
+
+## Language Versions
+
+| Version | Directory | Description |
+|---------|-----------|-------------|
+| Chinese | `skill/auto-wiki-cn/` | Agent protocols in Chinese. Wiki output in Chinese. |
+| English | `skill/auto-wiki-en/` | Agent protocols in English. Wiki output in English. |
+
+Each version is fully self-contained — copy one directory and it works standalone.
 
 ## License
 
