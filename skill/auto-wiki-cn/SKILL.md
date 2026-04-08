@@ -1,5 +1,5 @@
 ---
-name: knowledge-compiler
+name: auto-wiki
 description: |
   知识编译器：教 Agent 把源文件增量编译进持久化 wiki，实现跨会话知识积累。
   四个模式：知识模式（基于 wiki 回答所有问题）、ingest（编译源文件）、query（单次查询）、lint（治理健康度）。
