@@ -1,5 +1,7 @@
 # auto-wiki
 
+[English](README.md) | [中文](README.zh.md)
+
 教你的 AI Agent 构建和维护持久化知识 wiki——让它不再做完就忘。
 
 ## 问题

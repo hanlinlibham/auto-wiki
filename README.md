@@ -1,5 +1,7 @@
 # auto-wiki
 
+[English](README.md) | [中文](README.zh.md)
+
 Teach your AI agent to build and maintain a persistent knowledge wiki — so it stops forgetting what it learned yesterday.
 
 ## The Problem
