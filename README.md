@@ -1,9 +1,33 @@
 # auto-wiki
 
+> ### Quick Install
+>
+> **Claude Code** — paste this in your terminal:
+> ```
+> Learn the auto-wiki skill from https://github.com/hanlinlibham/auto-wiki — read skill/auto-wiki-en/SKILL.md and its references/ directory. Use it to build persistent knowledge wikis with ingest/recall/query/lint.
+> ```
+>
+> **OpenClaw / Other Agents** — add to your system prompt:
+> ```
+> You have access to the auto-wiki knowledge compiler skill. Read the SKILL.md file at https://github.com/hanlinlibham/auto-wiki/tree/main/skill/auto-wiki-en to learn how to build and maintain persistent wikis with four modes: recall, ingest, query, lint.
+> ```
+
 <details>
 <summary><b>🇨🇳 点击切换中文版</b></summary>
 
 ---
+
+> ### 快速安装
+>
+> **Claude Code** — 粘贴到终端：
+> ```
+> 学习 auto-wiki skill，地址 https://github.com/hanlinlibham/auto-wiki ——读取 skill/auto-wiki-cn/SKILL.md 及其 references/ 目录。用它来构建持久化知识 wiki，支持 ingest/recall/query/lint 四个模式。
+> ```
+>
+> **OpenClaw / 其他 Agent** — 加到系统提示词：
+> ```
+> 你可以使用 auto-wiki 知识编译器 skill。读取 https://github.com/hanlinlibham/auto-wiki/tree/main/skill/auto-wiki-cn 中的 SKILL.md 学习如何构建和维护持久化 wiki，支持 recall、ingest、query、lint 四个模式。
+> ```
 
 教你的 AI Agent 构建和维护持久化知识 wiki——让它不再做完就忘。
 
