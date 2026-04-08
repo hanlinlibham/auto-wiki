@@ -10,34 +10,44 @@ AI agents do research, write reports, pull data — then forget everything. Ask 
 
 ## The Solution
 
-auto-wiki is a **knowledge compiler** skill for AI agents (Claude Code, Codex, etc.). Instead of retrieving from raw documents at query time, the agent **incrementally builds and maintains a structured wiki** — comparing new information against existing pages, updating what changed, flagging contradictions, and preserving the evolution of knowledge.
+auto-wiki is a **knowledge compiler** skill for AI agents (Claude Code, Codex, etc.). Instead of retrieving from raw documents at query time, the agent incrementally builds and maintains a structured wiki — comparing new information against existing pages, updating what changed, flagging contradictions, and preserving the evolution of knowledge.
 
-Three operations:
+Four modes:
 
-| Operation | What the Agent Does |
-|-----------|-------------------|
-| **ingest** | Read source → search existing wiki → compare old vs new → update/create pages → write structured data to SQLite |
-| **query** | Search wiki index → read relevant pages → synthesize answer with citations → identify knowledge gaps |
-| **lint** | Scan all pages → fix broken links → detect contradictions → report health |
+| Mode | Trigger | What the Agent Does |
+|------|---------|-------------------|
+| **recall** | `/auto-wiki recall {topic}` | Load wiki context, answer all subsequent questions from accumulated knowledge |
+| **ingest** | `/auto-wiki ingest` or provide source material | Read source → compare old vs new → update/create pages → write data to SQLite |
+| **query** | `/auto-wiki query` | One-shot: search wiki → synthesize answer with citations → identify gaps |
+| **lint** | `/auto-wiki lint` | Scan all pages → fix broken links → detect contradictions → report health |
+
+The agent also auto-routes from natural language — "what did we learn about X" triggers recall, handing it a file triggers ingest.
 
 ## Quick Start
 
 1. Copy `skill/auto-wiki-en/` (English) or `skill/auto-wiki-cn/` (Chinese) into your agent's workspace
 2. Point your agent to `SKILL.md` as its instruction file
-3. Start accumulating:
+3. Build knowledge, then use it:
 
+**Accumulate:**
 ```
+You:   /auto-wiki ingest
 You:   "Research personal pension policy, build me a knowledge framework"
 Agent: [searches policy docs → creates wiki → ingests 2 sources → builds 6 concept pages]
-Agent: "Created personal-pension wiki: 6 concepts, 1 entity, 2 sources. Here's the framework..."
 
 You:   "Now find academic research on participation willingness"
 Agent: [searches → finds 3 papers → ingests → updates existing concepts → flags 1 contradiction]
-Agent: "Updated wiki: 2 concepts updated, 1 new concept, 1 contested finding..."
+```
 
-You:   "Based on what we've accumulated, how should policy be designed to increase participation?"
-Agent: [reads wiki → synthesizes across 5 concept pages → cites sources]
-Agent: "Based on [[enrollment-friction]], [[tax-incentive-effect]], and [[ira-usa]]..."
+**Recall:**
+```
+You:   /auto-wiki recall personal-pension
+Agent: Recall mode active. Wiki: 22 pages / 8 data points / 2 contested.
+
+You:   "How should policy be designed to increase participation?"
+Agent: Based on [[enrollment-friction]], [[tax-incentive-effect]], and [[ira-usa]]...
+       ⚠️ Note: tax incentive effectiveness is contested (77.8% vs 25%)
+       Gap: no research on under-35 demographics yet — suggest ingesting more.
 ```
 
 ## Language Versions
@@ -81,6 +91,17 @@ When the agent gets a new source, it compares against every relevant wiki page a
 | **Conflict** | Sources disagree, can't determine which is right | Keep both, mark as `contested` |
 
 This comparison loop is what keeps the wiki useful as it grows.
+
+## How Recall Works
+
+Recall is a persistent mode for the conversation. Once entered, every question consults the wiki first:
+
+1. Agent loads `index.md` + `data.db` summary on entry
+2. For each question: extract keywords → match pages in index → query data.db → read relevant pages
+3. Answer with citations (`[[page-slug]]`), flag contested info, report knowledge gaps
+4. Never fabricate — if the wiki doesn't have it, say so and suggest what to ingest
+
+Exit with `exit recall` or by switching to another mode.
 
 ## Domain Independence
 
