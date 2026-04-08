@@ -91,6 +91,14 @@ Agent 读 wiki，读它自己编译过的页面。回答里引用了 `[[enrollme
 
 最终数据：22 个页面，8 个结构化数据点，23 条关系边，2 处 contested。全部 schema 校验通过。5 轮对话，逐步积累出来的。
 
+你可能注意到了一个问题：第四步"学以致用"里，Agent 是怎么知道要去读 wiki 的？
+
+答案是 **recall 模式**。输入 `/auto-wiki recall personal-pension`，Agent 加载这个 wiki 的索引和数据摘要，之后这轮对话里你问什么，它都会先查 wiki 再回答。不用每次提醒它"根据 wiki 回答"。
+
+退出也简单，`exit recall` 或者直接切到别的操作就行。
+
+这个模式解决的是一个尴尬的问题：知识积累了一大堆，但 Agent 回答问题的时候根本不去翻。recall 让"先查积累再说话"变成对话期间的默认行为。
+
 ---
 
 ## 四、数据该在数据库里
@@ -128,10 +136,19 @@ Agent 写的那个 PensionFund 页面缺了 9 条。
 
 ## 开源
 
-auto-wiki，MIT 协议。
+auto-wiki，MIT 协议，一个文件夹复制过去就能用。
 
-一个文件夹，复制到你的 Agent 工作区就能用。中英文双版本。
+四个命令：
+
+```
+/auto-wiki ingest     ← 喂材料，编译进 wiki
+/auto-wiki recall     ← 进入知识模式，带着积累回答
+/auto-wiki query      ← 单次查一个问题
+/auto-wiki lint       ← 检查 wiki 健康度
+```
+
+也不用记这些命令。你说"帮我整理这篇"它就 ingest，说"之前研究过什么来着"它就 recall。
 
 GitHub：https://github.com/hanlinlibham/auto-wiki
 
-让你的 Agent 开始记住它学过的东西。
+中英文双版本。让你的 Agent 开始记住它学过的东西。
