@@ -102,11 +102,15 @@ python references/schema.py --report .wiki/my-topic/
 
 本项目受以下工作的启发：
 
-- **[LLM Wiki](https://x.com/toaborern/status/1935967165527437666)** by Tobi Lutke — "让 LLM 维护一个持久的 wiki，而不是每次查询都从头推导"。auto-wiki 的编译模型从这个想法发展而来。
+- **[LLM Wiki](https://github.com/swyxio/ai-notes/blob/main/Resources/llmwiki.md)** — LLM 维护持久化 wiki 的模式。想法由 [Tobi Lutke](https://x.com/tobi/status/1935967165527437666) 提出，[swyx](https://github.com/swyxio) 整理为可执行的实现文档。auto-wiki 的编译模型从这里发展而来。
 
-- **[autoresearch](https://github.com/karpathy/autoresearch)** by Andrej Karpathy — 让 Agent 自己跑研究循环。autoresearch 用来优化训练指标，auto-wiki 借了这个思路来做知识积累。
+- **[autoresearch](https://github.com/karpathy/autoresearch)** by Andrej Karpathy — 让 Agent 自己跑研究循环。autoresearch 用来优化训练指标，auto-wiki 借了同样的思路来做知识积累。
 
 - **[FIBO](https://spec.edmcouncil.org/fibo/)** by EDM Council — 金融行业用得最广的语义本体标准，627K+ 推理三元组。auto-wiki 的种子/校验器就是为了能接上 FIBO 这类本体做逻辑校验。
+
+- **[fibo-mcp](https://github.com/NeurofusionAI/fibo-mcp)** by NeurofusionAI — 将 FIBO 物化为可查询 SPARQL 端点的 MCP 服务器。auto-wiki 的校验器示例（`validators/fibo-mcp.md`）基于这个项目。
+
+- **[Nuwa](https://github.com/hanlinlibham)** — 认知画像方法论，从人的著作和决策中提取心智模型、启发式和决策模式。auto-wiki 的认知本体类型（`ontology-types/cognitive.md`）改编自这套方法。
 
 - **[Obsidian](https://obsidian.md/)** — wiki 格式（YAML frontmatter + `[[wikilinks]]`）刻意兼容 Obsidian，Agent 在后台编译，你用 Obsidian 浏览。
 

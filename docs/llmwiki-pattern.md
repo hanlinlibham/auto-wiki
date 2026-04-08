@@ -1,5 +1,7 @@
 # LLM Wiki
 
+> Original idea by [Tobi Lutke](https://x.com/tobi/status/1935967165527437666). Implementation document from [swyx/ai-notes](https://github.com/swyxio/ai-notes/blob/main/Resources/llmwiki.md). Included here for reference — auto-wiki's compilation model was built on top of this pattern.
+
 A pattern for building personal knowledge bases using LLMs.
 
 This is an idea file, it is designed to be copy pasted to your own LLM Agent (e.g. OpenAI Codex, Claude Code, OpenCode / Pi, or etc.). Its goal is to communicate the high level idea, but your agent will build out the specifics in collaboration with you.
