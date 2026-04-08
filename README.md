@@ -4,6 +4,8 @@
 
 Teach your AI agent to build and maintain a persistent knowledge wiki — so it stops forgetting what it learned yesterday.
 
+![RAG vs Compilation](docs/figure/01ragen.jpg)
+
 ## The Problem
 
 AI agents do research, write reports, pull data — then forget everything. Ask the same domain question next week, and the agent starts from scratch. RAG helps with retrieval, but it doesn't *accumulate* — it re-derives answers from raw documents every time.
@@ -82,6 +84,8 @@ The agent writes analysis in markdown and data in SQLite. Never the other way ar
 
 ## How Ingest Works
 
+![Ingest Flow](docs/figure/02ingest-en.jpg)
+
 When the agent gets a new source, it compares against every relevant wiki page and decides:
 
 | Result | When | Action |
@@ -104,6 +108,8 @@ Recall is a persistent mode for the conversation. Once entered, every question c
 Exit with `exit recall` or by switching to another mode.
 
 ## Domain Independence
+
+![Architecture](docs/figure/03core_en.jpg)
 
 The skill core is domain-agnostic. Domain knowledge is pluggable:
 
