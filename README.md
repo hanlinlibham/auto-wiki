@@ -68,9 +68,9 @@ Each version is fully self-contained — copy one directory and it works standal
 
 The agent writes analysis in markdown and data in SQLite. Never the other way around.
 
-## Ingest: The Core Differentiator
+## How Ingest Works
 
-When the agent ingests a new source, it doesn't just append — it **compiles**:
+When the agent gets a new source, it compares against every relevant wiki page and decides:
 
 | Result | When | Action |
 |--------|------|--------|
@@ -78,7 +78,7 @@ When the agent ingests a new source, it doesn't just append — it **compiles**:
 | **Update** | New info has newer date or better source | Rewrite page, move old conclusion to history |
 | **Conflict** | Sources disagree, can't determine which is right | Keep both, mark as `contested` |
 
-This three-way comparison is what makes a wiki compound over time instead of becoming a dump.
+This comparison loop is what keeps the wiki useful as it grows.
 
 ## Domain Independence
 
@@ -133,13 +133,13 @@ Also works with Obsidian — open `.wiki/` as a vault, graph view renders the wi
 
 This project builds on ideas and inspiration from:
 
-- **[LLM Wiki](https://x.com/toaborern/status/1935967165527437666)** by Tobi Lutke — the original pattern of LLM-maintained persistent wikis that directly inspired auto-wiki's compilation model. The core insight that knowledge should be *compiled once and kept current* rather than *re-derived on every query* is the foundation of this project.
+- **[LLM Wiki](https://x.com/toaborern/status/1935967165527437666)** by Tobi Lutke — the idea that an LLM should maintain a persistent wiki instead of re-deriving answers every time. auto-wiki's compilation model grew out of this.
 
-- **[autoresearch](https://github.com/karpathy/autoresearch)** by Andrej Karpathy — demonstrated that AI agents can autonomously iterate on research. While autoresearch optimizes scalar metrics through training loops, auto-wiki applies the same "agent as autonomous researcher" philosophy to knowledge accumulation through incremental compilation.
+- **[autoresearch](https://github.com/karpathy/autoresearch)** by Andrej Karpathy — showed that agents can run their own research loops. autoresearch optimizes training metrics; auto-wiki borrows the same "agent as researcher" idea for knowledge accumulation.
 
-- **[FIBO](https://spec.edmcouncil.org/fibo/)** (Financial Industry Business Ontology) by EDM Council — the gold standard for financial domain ontologies. auto-wiki's seed/validator architecture was designed to leverage FIBO's 627K+ triples for logical validation without requiring users to learn OWL/RDF.
+- **[FIBO](https://spec.edmcouncil.org/fibo/)** by EDM Council — the most widely adopted semantic ontology for finance (627K+ inferred triples). auto-wiki's seed/validator system was built to plug into standards like FIBO for logical validation.
 
-- **[Obsidian](https://obsidian.md/)** — auto-wiki's markdown format (YAML frontmatter + `[[wikilinks]]`) is intentionally Obsidian-compatible, so users can browse their wiki with a proper knowledge graph UI while the agent maintains it programmatically.
+- **[Obsidian](https://obsidian.md/)** — wiki format (YAML frontmatter + `[[wikilinks]]`) is Obsidian-compatible by design. The agent compiles in the background; you browse with Obsidian.
 
 ## License
 
