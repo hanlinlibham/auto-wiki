@@ -115,7 +115,7 @@ Skill 核心是领域无关的编译引擎。垂直领域的专业性通过可�
 - **[LLM Wiki](https://github.com/swyxio/ai-notes/blob/main/Resources/llmwiki.md)** — 想法由 [Tobi Lutke](https://x.com/tobi/status/1935967165527437666) 提出，[swyx](https://github.com/swyxio) 整理为实现文档
 - **[autoresearch](https://github.com/karpathy/autoresearch)** by Andrej Karpathy
 - **[FIBO](https://spec.edmcouncil.org/fibo/)** by EDM Council · **[fibo-mcp](https://github.com/NeurofusionAI/fibo-mcp)** by NeurofusionAI
-- **[Nuwa](https://github.com/hanlinlibham)** · **[Obsidian](https://obsidian.md/)**
+- **[Nuwa Skill](https://github.com/alchaincyf/nuwa-skill)** by 花叔 · **[Obsidian](https://obsidian.md/)**
 
 MIT. 见 [LICENSE](LICENSE)。
 
@@ -272,7 +272,7 @@ This project builds on ideas and inspiration from:
 
 - **[fibo-mcp](https://github.com/NeurofusionAI/fibo-mcp)** by NeurofusionAI — the MCP server that materializes FIBO into a queryable SPARQL endpoint. auto-wiki's validator example (`validators/fibo-mcp.md`) is built on top of this project.
 
-- **[Nuwa](https://github.com/hanlinlibham)** — a cognitive profiling methodology for extracting mental models, heuristics, and decision patterns from a person's writings and decisions. auto-wiki's cognitive ontology type (`ontology-types/cognitive.md`) was adapted from this approach.
+- **[Nuwa Skill](https://github.com/alchaincyf/nuwa-skill)** by 花叔 — a cognitive profiling methodology for extracting mental models, heuristics, and decision patterns from a person's writings and decisions. auto-wiki's cognitive ontology type (`ontology-types/cognitive.md`) was adapted from this approach.
 
 - **[Obsidian](https://obsidian.md/)** — wiki format (YAML frontmatter + `[[wikilinks]]`) is Obsidian-compatible by design. The agent compiles in the background; you browse with Obsidian.
 

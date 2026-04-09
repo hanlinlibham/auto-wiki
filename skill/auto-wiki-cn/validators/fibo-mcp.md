@@ -2,12 +2,14 @@
 
 > 外部校验器，通过 SPARQL 查询 FIBO 本体（627K 推理三元组）校验 wiki 中知识的逻辑结构。
 > 可选增强——不可达时 lint 退化为 schema.py 格式校验 + 种子静态规则。
+>
+> 基于 [NeuroFusionAI/fibo-mcp](https://github.com/NeuroFusionAI/fibo-mcp)（MIT），将 FIBO 本体物化为可查询的 MCP SPARQL 端点。
 
 ## 服务信息
 
 | 项 | 值 |
 |----|-----|
-| 端点 | `https://your-fibo-mcp-endpoint/mcp` |
+| 端点 | `https://mcp.ablemind.cc/fibomcp/mcp` |
 | 协议 | MCP Streamable HTTP（需 `Mcp-Session-Id`），HTTPS via Cloudflare |
 | 工具 | 仅 `sparql`（无 search） |
 | 数据规模 | 627,712 triples（含 OWL-RL 推理物化） |

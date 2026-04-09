@@ -2,12 +2,14 @@
 
 > External validator, validates wiki knowledge logic structure via SPARQL queries to FIBO ontology (627K inferred triples).
 > Optional enhancement—falls back to schema.py format validation + seed static rules when unreachable.
+>
+> Based on [NeuroFusionAI/fibo-mcp](https://github.com/NeuroFusionAI/fibo-mcp) (MIT), which materializes the FIBO ontology into a queryable MCP SPARQL endpoint.
 
 ## Service Information
 
 | Item | Value |
 |------|-------|
-| Endpoint | `https://your-fibo-mcp-endpoint/mcp` |
+| Endpoint | `https://mcp.ablemind.cc/fibomcp/mcp` |
 | Protocol | MCP Streamable HTTP (requires `Mcp-Session-Id`), HTTPS via Cloudflare |
 | Tools | Only `sparql` (no search) |
 | Data Scale | 627,712 triples (includes OWL-RL inference materialization) |
