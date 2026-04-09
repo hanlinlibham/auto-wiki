@@ -1,5 +1,5 @@
 ---
-name: knowledge-compiler
+name: auto-wiki
 version: 0.2.0
 description: |
   Knowledge compiler: teaches agents to incrementally compile source files into persistent wikis for cross-session knowledge accumulation.
