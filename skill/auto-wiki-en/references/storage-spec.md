@@ -46,9 +46,13 @@ All wikis are stored in `.wiki/` directory under working directory:
 | `path:entities/` | Cyan-green | Entities |
 | `path:concepts/` | Emerald | Concepts |
 | `path:analyses/` | Purple | Analyses |
-| `tag:#contested` | Red | Contested nodes (highlight risk) |
+| `[confidence:contested]` | Red | Contested nodes (Obsidian Properties syntax matching frontmatter) |
 
-Also sets `showArrow: true` (show relationship direction) and `textFadeMultiplier: -1.5` (show node labels by default).
+Also sets:
+- `showTags: false` (hide tag nodes from graph — coloring uses `path:` and Properties queries; tags are for search/filter only)
+- `showArrow: true` (show relationship direction)
+- `textFadeMultiplier: -1.5` (show node labels by default)
+- `search: "-path:index -path:log"` (exclude index and log meta files)
 
 If need to exclude `_report.html` and other generated files, add `_*` to Obsidian Settings → Files & Links → Excluded files.
 

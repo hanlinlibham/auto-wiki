@@ -48,6 +48,8 @@ created: 2026-04-06
 updated: 2026-04-06
 sources: [source-slug-1, source-slug-2]
 confidence: high                # high | medium | low | contested
+tags: [entity]                  # 必填：页面类型 + 可选状态标签
+aliases: []                     # 可选：页面别名
 ---
 ```
 
@@ -59,10 +61,10 @@ confidence: high                # high | medium | low | contested
 | updated | 是 | 最后更新日期（每次修改必须更新） |
 | sources | 是 | 引用的 source 页面 slug 列表（source 类型页面填 `[]`） |
 | confidence | 是 | 置信度：`high` / `medium` / `low` / `contested` |
-| tags | 是 | Obsidian 标签列表，用于图谱着色和过滤 |
+| tags | 是 | Obsidian 标签列表，用于搜索过滤和分类浏览 |
 | aliases | 否 | 页面别名列表，用于 Obsidian 搜索和链接补全 |
 
-### tags 规则（Obsidian 图谱必需）
+### tags 规则（Obsidian 搜索过滤必需）
 
 `tags` 必须包含页面类型（`source` / `entity` / `concept` / `analysis` / `mental-model`），可追加状态标签：
 
@@ -82,7 +84,7 @@ tags:
   # 或 authoritative-secondary / secondary / hearsay / inference
 ```
 
-这些标签使 Obsidian 图谱可以按颜色区分页面类型，按 `tag:#contested` 高亮风险节点。
+这些标签用于 Obsidian 搜索过滤（如在搜索栏输入 `tag:#contested` 快速定位有争议的页面）。图谱着色不依赖 tags——靠 `path:` 规则区分页面类型，靠 `[confidence:contested]` Properties 查询高亮风险节点。
 
 ### aliases 规则
 

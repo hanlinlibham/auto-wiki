@@ -46,9 +46,13 @@
 | `path:entities/` | 青绿 | 实体 |
 | `path:concepts/` | 翠绿 | 概念 |
 | `path:analyses/` | 紫色 | 分析 |
-| `tag:#contested` | 红色 | 有争议的节点（高亮风险） |
+| `[confidence:contested]` | 红色 | 有争议的节点（Obsidian Properties 语法匹配 frontmatter） |
 
-同时设置 `showArrow: true`（显示关系方向）和 `textFadeMultiplier: -1.5`（默认显示节点标签）。
+同时设置：
+- `showTags: false`（不在图谱中显示 tag 节点——着色靠 `path:` 和 Properties 查询，tag 仅用于搜索过滤）
+- `showArrow: true`（显示关系方向）
+- `textFadeMultiplier: -1.5`（默认显示节点标签）
+- `search: "-path:index -path:log"`（排除 index 和 log 元文件）
 
 如果需要排除 `_report.html` 等生成文件，在 Obsidian Settings → Files & Links → Excluded files 中添加 `_*`。
 

@@ -48,6 +48,8 @@ created: 2026-04-06
 updated: 2026-04-06
 sources: [source-slug-1, source-slug-2]
 confidence: high                # high | medium | low | contested
+tags: [entity]                  # Required: page type + optional status tags
+aliases: []                     # Optional: page aliases
 ---
 ```
 
@@ -59,10 +61,10 @@ confidence: high                # high | medium | low | contested
 | updated | Yes | Last update date (must update on each change) |
 | sources | Yes | List of referenced source page slugs (source type pages fill `[]`) |
 | confidence | Yes | Confidence: `high` / `medium` / `low` / `contested` |
-| tags | Yes | Obsidian tag list for graph coloring and filtering |
+| tags | Yes | Obsidian tag list for search filtering and categorized browsing |
 | aliases | No | Page alias list for Obsidian search and link completion |
 
-### tags Rules (required for Obsidian graph)
+### tags Rules (required for Obsidian search filtering)
 
 `tags` must include the page type (`source` / `entity` / `concept` / `analysis` / `mental-model`), with optional status tags:
 
@@ -82,7 +84,7 @@ tags:
   # Or authoritative-secondary / secondary / hearsay / inference
 ```
 
-These tags enable Obsidian graph to color-code by page type and highlight risk nodes via `tag:#contested`.
+These tags are for Obsidian search filtering (e.g., type `tag:#contested` in search bar to locate disputed pages). Graph coloring does NOT rely on tags — it uses `path:` rules for page type coloring and `[confidence:contested]` Properties query for risk node highlighting.
 
 ### aliases Rules
 
