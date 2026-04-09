@@ -59,6 +59,41 @@ confidence: high                # high | medium | low | contested
 | updated | 是 | 最后更新日期（每次修改必须更新） |
 | sources | 是 | 引用的 source 页面 slug 列表（source 类型页面填 `[]`） |
 | confidence | 是 | 置信度：`high` / `medium` / `low` / `contested` |
+| tags | 是 | Obsidian 标签列表，用于图谱着色和过滤 |
+| aliases | 否 | 页面别名列表，用于 Obsidian 搜索和链接补全 |
+
+### tags 规则（Obsidian 图谱必需）
+
+`tags` 必须包含页面类型（`source` / `entity` / `concept` / `analysis` / `mental-model`），可追加状态标签：
+
+```yaml
+tags:
+  - concept                    # 必填：页面类型
+  - contested                  # 可选：confidence=contested 时加
+  - low-confidence             # 可选：confidence=low 时加
+```
+
+source 类型页面额外加来源等级标签：
+
+```yaml
+tags:
+  - source
+  - primary-source             # 一手来源
+  # 或 authoritative-secondary / secondary / hearsay / inference
+```
+
+这些标签使 Obsidian 图谱可以按颜色区分页面类型，按 `tag:#contested` 高亮风险节点。
+
+### aliases 规则
+
+标题含括号说明时，拆出短名和括号内容作为别名：
+
+```yaml
+title: EET 税收模式（个人养老金税优机制）
+aliases:
+  - EET 税收模式
+  - 个人养老金税优机制
+```
 
 ### 结构化数据 → data.db
 

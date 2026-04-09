@@ -28,7 +28,29 @@
 - YAML frontmatter → Obsidian Properties 面板，可按 confidence、type 等字段过滤
 - `sources/`、`entities/`、`concepts/` 目录 → Obsidian 文件夹视图
 
-无需额外配置。如果需要排除 `_report.html` 等生成文件，在 Obsidian Settings → Files & Links → Excluded files 中添加 `_*`。
+**首次创建 `.wiki/` 时**，Agent 应初始化 `.obsidian/` 配置目录，启用图谱着色：
+
+```
+.wiki/.obsidian/
+├── graph.json       # 图谱配色方案（按 path 和 tag 分组着色）
+├── app.json         # {}
+├── appearance.json  # {}
+└── core-plugins.json # 启用 graph、backlink、properties、tag-pane
+```
+
+`graph.json` 预设 5 个颜色分组：
+
+| 分组规则 | 颜色 | 说明 |
+|---------|------|------|
+| `path:sources/` | 蓝灰 | 源文件 |
+| `path:entities/` | 青绿 | 实体 |
+| `path:concepts/` | 翠绿 | 概念 |
+| `path:analyses/` | 紫色 | 分析 |
+| `tag:#contested` | 红色 | 有争议的节点（高亮风险） |
+
+同时设置 `showArrow: true`（显示关系方向）和 `textFadeMultiplier: -1.5`（默认显示节点标签）。
+
+如果需要排除 `_report.html` 等生成文件，在 Obsidian Settings → Files & Links → Excluded files 中添加 `_*`。
 
 ### 可视化报告
 

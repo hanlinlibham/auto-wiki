@@ -59,6 +59,41 @@ confidence: high                # high | medium | low | contested
 | updated | Yes | Last update date (must update on each change) |
 | sources | Yes | List of referenced source page slugs (source type pages fill `[]`) |
 | confidence | Yes | Confidence: `high` / `medium` / `low` / `contested` |
+| tags | Yes | Obsidian tag list for graph coloring and filtering |
+| aliases | No | Page alias list for Obsidian search and link completion |
+
+### tags Rules (required for Obsidian graph)
+
+`tags` must include the page type (`source` / `entity` / `concept` / `analysis` / `mental-model`), with optional status tags:
+
+```yaml
+tags:
+  - concept                    # Required: page type
+  - contested                  # Optional: when confidence=contested
+  - low-confidence             # Optional: when confidence=low
+```
+
+Source type pages add source grade tags:
+
+```yaml
+tags:
+  - source
+  - primary-source             # Primary source
+  # Or authoritative-secondary / secondary / hearsay / inference
+```
+
+These tags enable Obsidian graph to color-code by page type and highlight risk nodes via `tag:#contested`.
+
+### aliases Rules
+
+When title contains parenthetical explanations, split out the short name and parenthetical content as aliases:
+
+```yaml
+title: EET Tax Model (Personal Pension Tax Incentive)
+aliases:
+  - EET Tax Model
+  - Personal Pension Tax Incentive
+```
 
 ### Structured Data → data.db
 

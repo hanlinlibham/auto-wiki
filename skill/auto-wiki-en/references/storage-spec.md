@@ -28,7 +28,29 @@ All wikis are stored in `.wiki/` directory under working directory:
 - YAML frontmatter → Obsidian Properties panel, can filter by confidence, type, etc.
 - `sources/`, `entities/`, `concepts/` directories → Obsidian folder view
 
-No additional configuration needed. If need to exclude `_report.html` and other generated files, add `_*` to Obsidian Settings → Files & Links → Excluded files.
+**On first `.wiki/` creation**, Agent should initialize `.obsidian/` config directory with graph coloring enabled:
+
+```
+.wiki/.obsidian/
+├── graph.json       # Graph color scheme (grouped by path and tag)
+├── app.json         # {}
+├── appearance.json  # {}
+└── core-plugins.json # Enable graph, backlink, properties, tag-pane
+```
+
+`graph.json` presets 5 color groups:
+
+| Group Rule | Color | Description |
+|-----------|-------|-------------|
+| `path:sources/` | Blue-gray | Source files |
+| `path:entities/` | Cyan-green | Entities |
+| `path:concepts/` | Emerald | Concepts |
+| `path:analyses/` | Purple | Analyses |
+| `tag:#contested` | Red | Contested nodes (highlight risk) |
+
+Also sets `showArrow: true` (show relationship direction) and `textFadeMultiplier: -1.5` (show node labels by default).
+
+If need to exclude `_report.html` and other generated files, add `_*` to Obsidian Settings → Files & Links → Excluded files.
 
 ### Visualization Reports
 
