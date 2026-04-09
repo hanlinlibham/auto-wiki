@@ -150,9 +150,20 @@ Lint 分两档。结构化检查可以自动跑完全量页面，语义检查需
 - 检测：data.db 中数据的 period 距今 > 12 个月，且该领域通常有年度更新
 - 输出：`{ gap_type: "outdated", page: "xxx", field: "xxx", last_period: "xxx" }`
 
+#### Gap-6: Validator Gap（校验器缺口）— 仅当 wiki 声明了 validator 时
+
+如果 meta.yaml 声明了 `seed` 且对应种子文件指向了 `validator`，Coverage 额外运行校验器检查：
+
+- 检测：调用校验器（如 FIBO SPARQL）查询实体类型的必要关系（`someValuesFrom` 约束），对比 wiki 中已建立的关系
+- 示例：FIBO 说 PensionFund 必须有 Trustee 关系，wiki 中该实体页缺了这条关系 → 缺口
+- 输出：`{ gap_type: "validator_gap", page: "xxx", missing_relation: "hasTrustee", standard: "FIBO" }`
+- 降级：校验器不可达时静默跳过，在报告中注明"外部校验器不可达，已跳过"
+
+这一类缺口检测的不是"信息缺失"，而是"逻辑不完整"——你说这是一个 PensionFund，但按行业标准定义，它至少还需要管理人、托管人、监管方。
+
 #### 覆盖度启发式（补充）
 
-以上 5 类之外，保留原有启发式检查：
+以上 6 类之外，保留原有启发式检查：
 - 某个实体被 5 个其他页面引用，但自身内容很薄（< 100 字）→ 建议深化
 - 某个类型（如 concepts/）页面很少，但 entities/ 页面很多 → 建议提炼概念
 - source 页面多但 analysis 页面少 → 建议做综合分析

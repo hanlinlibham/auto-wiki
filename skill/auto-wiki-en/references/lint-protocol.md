@@ -150,9 +150,20 @@ Different from Staleness—Staleness labels stale candidates, Outdated focuses o
 - Detection: data.db data period > 12 months ago, and the domain typically has annual updates
 - Output: `{ gap_type: "outdated", page: "xxx", field: "xxx", last_period: "xxx" }`
 
+#### Gap-6: Validator Gap — only when wiki declares a validator
+
+If meta.yaml declares a `seed` and the corresponding seed file points to a `validator`, Coverage additionally runs validator checks:
+
+- Detection: Call validator (e.g., FIBO SPARQL) to query required relations (`someValuesFrom` constraints) for entity types, compare against relations built in wiki
+- Example: FIBO says PensionFund must have a Trustee relation, but the wiki entity page lacks this relation → Gap
+- Output: `{ gap_type: "validator_gap", page: "xxx", missing_relation: "hasTrustee", standard: "FIBO" }`
+- Degradation: If validator unreachable, silently skip and note in report "External validator unreachable, skipped"
+
+This category detects not "missing information" but "logical incompleteness" — you say this is a PensionFund, but by industry standard definition, it needs at least a management company, custodian, and supervisory authority.
+
 #### Coverage Heuristics (supplementary)
 
-Beyond the 5 categories above, retain original heuristic checks:
+Beyond the 6 categories above, retain original heuristic checks:
 - Entity referenced by 5 other pages but content is thin (< 100 words) → Suggest deepening
 - Few pages of certain type (e.g., concepts/) but many entities/ → Suggest extracting concepts
 - Many source pages but few analysis pages → Suggest comprehensive analysis

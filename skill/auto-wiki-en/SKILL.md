@@ -144,6 +144,8 @@ After receiving user input, determine three things: **operation type**, **target
 
 **If wiki directory doesn't exist**, create initial structure per `references/storage-spec.md` (including meta.yaml, index.md template, log.md template).
 
+**Domain seed**: If the target domain has a corresponding seed file (`seeds/{name}.md`), declare `seed: {name}` in meta.yaml. Seeds provide standard terminology, relationship templates, and anti-confusion rules, letting wikis start from a normalized foundation. Domains without seeds grow freely — both paths work. Seeds are community-contributable plugins — anyone can write a markdown file for their vertical domain. See `references/seed-ontologies.md`.
+
 **On first use**, perform environment check (see `references/source-validation.md`), informing user of available capabilities (passive mode vs active mode).
 
 ### Reference Loading Strategy
@@ -299,6 +301,23 @@ When research target is a **domain**, see `references/ontology-types/domain.md` 
 
 Both share the same wiki infrastructure (ingest/query/lint), differing only in page classification and collection emphasis.
 
+## Vertical Domain Adaptation
+
+The skill core is a domain-agnostic compilation engine. Vertical domain expertise is injected through two plugin layers:
+
+| Layer | Carrier | Purpose | Required? |
+|-------|---------|---------|-----------|
+| **Seed** | `seeds/{name}.md` | Cold-start vocabulary: standard terms, relationship templates, anti-confusion rules | Optional |
+| **Validator** | `validators/{name}.md` | Runtime logical validation: relationship legality, required relation completeness | Optional |
+
+Without plugins, wikis grow freely — suitable for exploratory research. With plugins, wikis start from industry standards with normalized naming, clear relationship structures, and detectable logic gaps.
+
+**Community-contributable**: Write a seed file (markdown) for your vertical domain — declare 20-50 core terms and anti-confusion rules, and wikis in that domain start from a normalized foundation.
+
+Currently available:
+- `seeds/fibo-pensions.md` — Enterprise annuity / pensions (based on FIBO standard)
+- `validators/fibo-mcp.md` — FIBO SPARQL logical validation (627K inferred triples)
+
 ## What This Skill Doesn't Do
 
 - **No vector retrieval**. Small scale uses index + grep, large scale uses SQLite FTS5 + BM25 (see `references/scaling.md`). Vector retrieval is left to platform-level tools.
@@ -311,7 +330,9 @@ This skill doesn't replace any professional tool, it **connects** them:
 
 ```
 Any research tool produces analysis → ingest into corresponding wiki
-Any data tool pulls data → ingest into corresponding wiki
+Any data tool pulls data           → ingest into corresponding wiki
+Domain seeds provide starting line  → standard terms + anti-confusion rules
+External validators check logic     → lint checks knowledge structure completeness
 
 Next time executing tasks, agent reads relevant wiki → works with accumulated knowledge
 ```
