@@ -115,3 +115,27 @@ Agent: 你希望我怎么获取材料？
 ```
 
 **关键原则：搜索是获取源文件的手段，不改变 ingest 的核心逻辑（读旧比新改旧）。**
+
+### Deep-Dive 搜索来源的标注
+
+当来源由 deep-dive 管道的自动搜索获取时，source 摘要页需要额外记录 deep-dive 元数据：
+
+```yaml
+---
+title: Alpha Corp 2025 年报摘要
+type: source
+source_type: 二手          # 按实际判定，不因搜索方式改变
+source_origin: 财新网
+source_date: 2025-06-15
+source_url: "https://..."
+deep_dive_meta:            # deep-dive 特有字段
+  search_query: "Alpha Corp 企业年金 年报 2025"
+  gap_filled: "single_source:alpha-corp"
+  search_date: 2026-04-09
+---
+```
+
+**Confidence 上限规则**：
+- 搜索获取的来源，confidence 上限为 medium，除非来源满足"一手"或"二手·权威"标准
+- 多个搜索来源佐证同一结论时，confidence 可提升至 high
+- 来源的 source_type 仍按标准分级判定，不因获取方式（搜索 vs 用户提供）而改变

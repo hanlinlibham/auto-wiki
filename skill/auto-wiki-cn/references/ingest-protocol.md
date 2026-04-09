@@ -198,3 +198,76 @@ log.md 追加：
 - Created: concepts/portable-annuity
 - Conflicts: none
 ```
+
+---
+
+## From-Lint 流程（deep-dive 管道的 ingest 阶段）
+
+当 ingest 由 deep-dive 管道触发时，输入不是用户提供的源文件，而是 lint Coverage 输出的缺口报告（Gap Report）。
+
+### 与标准 ingest 的区别
+
+| 方面 | 标准 ingest | from-lint ingest |
+|------|------------|------------------|
+| 输入 | 用户提供的源文件 | Gap Report 中的缺口条目 |
+| 来源获取 | 用户已提供 | Agent 通过搜索工具获取 |
+| 批量操作 | 通常 1 个源文件 | 可能 N 个缺口，逐个处理 |
+| 用户确认 | 不需要（用户已主动提供） | 需要（搜索前确认范围，搜索后确认质量） |
+
+### 流程
+
+```
+输入：Gap Report（来自 lint Coverage）
+
+For each confirmed gap:
+
+1. 制定搜索计划
+   ├─ page_missing → 搜索该实体/概念的基本信息
+   ├─ concept_missing → 搜索该术语的定义和解释
+   ├─ data_missing → 搜索该指标的最新数据
+   ├─ single_source → 搜索额外来源以交叉验证
+   └─ outdated → 搜索该指标/实体的最新信息
+
+2. 执行搜索（需要搜索工具——主动模式）
+   ├─ 使用 WebSearch / 搜索类 MCP 获取候选来源
+   ├─ 搜索工具优先级：领域专业工具 > 通用搜索
+   ├─ 按 source-validation.md 分级筛选
+   └─ 排除黑名单渠道，取 top 1-3 个可信来源
+
+3. 展示搜索结果，请用户确认
+   ├─ 展示每个来源的标题、URL、可信度分级
+   ├─ 用户选择：接受 / 跳过 / 替换
+   └─ 搜索结果质量不够 → 标注"未能补全"，跳过
+
+4. 对确认的每个来源，执行标准 ingest 流程
+   ├─ Step 1-7 与普通 ingest 完全一致
+   └─ source 摘要页额外记录 deep-dive 元数据（见 source-validation.md）
+```
+
+### 防扩散机制
+
+- 每个 gap 最多搜索 3 次（换关键词）。3 次搜不到可信来源 → 标注"未能补全"
+- 单次 deep-dive 最多处理 10 个 gap（可通过 `--max-gaps` 调整）
+- 搜索到的来源如果引入了 wiki 中完全不存在的新实体，**不自动创建页面**——只填补已知缺口，不主动扩展 wiki 范围
+- 所有搜索来源的 confidence 上限为 medium（除非来源是一手/权威二手）
+
+### 补全报告
+
+```
+## Deep-Dive 补全报告：{topic}
+执行时间：{date}
+
+### 已补全：{N} / {total} 个缺口
+| # | Gap | Action | Source | Confidence |
+|---|-----|--------|--------|------------|
+| 1 | page_missing: portable-annuity | 新建页面 | [二手·权威] 财新报道 | medium |
+| 2 | single_source: alpha-corp | 增加 1 个来源 | [二手] 行业研报 | medium |
+
+### 未能补全：{M} 个缺口
+| # | Gap | Reason |
+|---|-----|--------|
+| 3 | data_missing: beta-corp/市场份额 | 搜索 3 次未找到可信来源 |
+
+### 建议
+- beta-corp 市场份额数据建议用户手动提供行业报告
+```

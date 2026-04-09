@@ -111,7 +111,48 @@ Lint 分两档。结构化检查可以自动跑完全量页面，语义检查需
 
 ### 2.7 Coverage（覆盖度评估）— 语义档
 
-不是找错误，而是找缺口：
+不是找错误，而是找缺口。分 5 类检测：
+
+#### Gap-1: Page Missing（页面缺失）
+
+被其他页面通过 `[[slug]]` 引用但实际文件不存在。与 Broken Link 不同——Broken Link 是链接拼写错误，Page Missing 是知识本身缺失。
+
+- 检测：遍历所有 wikilink，找到指向不存在页面的引用
+- 判定：3+ 个页面引用同一个不存在的 slug → 不是拼写错误，是知识缺口
+- 输出：`{ gap_type: "page_missing", slug: "xxx", referenced_by: [...] }`
+
+#### Gap-2: Concept Missing（概念缺失）
+
+多个实体页面反复提到同一术语/概念，但没有独立的概念页解释它。
+
+- 检测：在 entities/ 正文中提取高频术语，检查 concepts/ 中是否有对应页面
+- 阈值：某术语在 3+ 个不同页面出现但无独立概念页 → 缺口
+- 输出：`{ gap_type: "concept_missing", term: "xxx", mentioned_in: [...] }`
+
+#### Gap-3: Data Missing（数据缺失）
+
+实体页面提到某个指标但 data.db 中没有对应数值，或数值缺少关键维度（没有 period、没有来源）。
+
+- 检测：扫描页面正文中的指标名称，交叉检查 data.db
+- 输出：`{ gap_type: "data_missing", page: "xxx", field: "xxx" }`
+
+#### Gap-4: Single Source（来源单一）
+
+页面 confidence 依赖唯一来源，且该来源不是一手/权威来源。
+
+- 检测：sources 列表长度 = 1 且 source_type 不是"一手"或"二手·权威"
+- 输出：`{ gap_type: "single_source", page: "xxx", current_source: "xxx" }`
+
+#### Gap-5: Outdated（过时待更新）
+
+与 Staleness 不同——Staleness 标注过时候选，Outdated 侧重数据已有更新时点但 wiki 未跟上。
+
+- 检测：data.db 中数据的 period 距今 > 12 个月，且该领域通常有年度更新
+- 输出：`{ gap_type: "outdated", page: "xxx", field: "xxx", last_period: "xxx" }`
+
+#### 覆盖度启发式（补充）
+
+以上 5 类之外，保留原有启发式检查：
 - 某个实体被 5 个其他页面引用，但自身内容很薄（< 100 字）→ 建议深化
 - 某个类型（如 concepts/）页面很少，但 entities/ 页面很多 → 建议提炼概念
 - source 页面多但 analysis 页面少 → 建议做综合分析
@@ -145,3 +186,34 @@ Lint 分两档。结构化检查可以自动跑完全量页面，语义检查需
 - 最孤立 entity：portfolio-category（0 个入链）
 - 最近 ingest：2026-04-06（3 天前）
 ```
+
+## 缺口报告格式（供 deep-dive 使用）
+
+当 Coverage 检查由 deep-dive 触发时，除健康报告外还输出结构化缺口报告：
+
+```
+## Gap Report: {topic}
+Generated: {date}
+Scope: {全量 | 指定范围}
+
+### Gaps Found: {N}
+
+| # | Category | Target | Detail | Priority | Search Direction |
+|---|----------|--------|--------|----------|------------------|
+| 1 | page_missing | portable-annuity | 被 4 个页面引用 | high | 搜索"可携带企业年金 政策" |
+| 2 | concept_missing | 受托人资格 | 在 5 个实体页中提到 | high | 搜索"企业年金受托人资格 要求" |
+| 3 | single_source | alpha-corp | 仅有来源: industry-report-2025 | medium | 搜索"Alpha Corp 养老金 年报" |
+
+### Priority Rules
+- high: page_missing（3+ 引用）、concept_missing（5+ 提及）
+- medium: single_source、data_missing
+- low: outdated（数据年龄 12-24 个月）
+```
+
+### 范围控制（deep-dive 场景）
+
+deep-dive 触发时，Coverage 接受可选范围参数：
+- `deep-dive {topic}` → 限定在指定 wiki
+- `deep-dive {topic} entities/` → 限定在子目录
+- `deep-dive {topic} --max-gaps N` → 限制最大缺口数（默认 10）
+- 无范围指定时，按语义档的范围控制规则执行（<50 页全量，50-200 页近 30 天，>200 页要求指定）

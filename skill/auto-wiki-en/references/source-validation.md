@@ -115,3 +115,27 @@ If user has search tools, Agent's ingest flow expands to:
 ```
 
 **Key principle: Search is means to obtain source files, doesn't change ingest core logic (read old, compare new, modify old).**
+
+### Deep-Dive Search Source Labeling
+
+When sources are obtained by deep-dive pipeline's automated search, the source summary page needs additional deep-dive metadata:
+
+```yaml
+---
+title: Alpha Corp 2025 Annual Report Summary
+type: source
+source_type: secondary     # Graded by actual content, not affected by search method
+source_origin: Caixin
+source_date: 2025-06-15
+source_url: "https://..."
+deep_dive_meta:            # deep-dive specific fields
+  search_query: "Alpha Corp enterprise annuity annual report 2025"
+  gap_filled: "single_source:alpha-corp"
+  search_date: 2026-04-09
+---
+```
+
+**Confidence ceiling rules**:
+- Search-sourced content has confidence ceiling of medium, unless source qualifies as "primary" or "authoritative-secondary"
+- Multiple search sources corroborating the same conclusion can raise confidence to high
+- Source's source_type is still graded by standard criteria, not affected by acquisition method (search vs user-provided)

@@ -1,5 +1,6 @@
 ---
 name: knowledge-compiler
+version: 0.2.0
 description: |
   Knowledge compiler: teaches agents to incrementally compile source files into persistent wikis for cross-session knowledge accumulation.
   
@@ -18,6 +19,11 @@ description: |
   
   lint → User wants to check wiki health.
   Trigger words: lint, check wiki, wiki health, clean up, any conflicts.
+
+  deep-dive → User wants Agent to automatically find knowledge gaps and fill them.
+  Trigger words: deep-dive, deep dive, fill gaps, research gaps, level up,
+  auto-complete wiki, knowledge completion, comprehensive fill.
+  Note: deep-dive is not an independent mode, it's a combined pipeline of lint(Coverage) + ingest(search-fill).
 ---
 
 # Knowledge Compiler
@@ -60,6 +66,9 @@ It's not RAG (retrieving from documents on each query), but compilation—after 
 | **ingest** | User provides source file or text | Read source → Search wiki → Compare old vs new → Update/create pages → Update index |
 | **query** | User asks a question (one-time) | Read index → Find relevant pages → Synthesize answer → Archive valuable analysis |
 | **lint** | User says "check wiki" | Scan all pages → Merge duplicates → Archive outdated → Report conflicts and health |
+| **deep-dive** | `deep-dive` / "level up" | Run Coverage lint → Present gap report → User confirms → Search + ingest to fill gaps |
+
+> deep-dive is not a 5th independent mode—it's a combined pipeline of lint (Coverage) and ingest (with search tools). Requires search tools (active mode).
 
 Recall mode vs query difference: query is one-time operation (ask one question, check wiki once). Recall mode is continuous state—after entering, every question in this conversation goes through wiki first.
 
@@ -146,6 +155,7 @@ Don't read all references at once. Load on-demand by operation type:
 | **ingest** | `ingest-protocol.md`, `wiki-format.md`, `schema.py` | `storage-spec.md` (if wiki doesn't exist), `seed-ontologies.md` + `seeds/{name}.md` (if seed declared in meta.yaml) | `fact-check.md`, `source-validation.md` |
 | **query** | `query-protocol.md` | — | — |
 | **lint** | `lint-protocol.md`, `schema.py` | — | `validators/{name}.md` (if seed declared validator) |
+| **deep-dive** | `lint-protocol.md`, `ingest-protocol.md`, `source-validation.md`, `wiki-format.md`, `schema.py` | `storage-spec.md` (if wiki doesn't exist) | `fact-check.md` |
 
 **Not needed**: `scaling.md` only relevant when page count > 500; `ontology-types/` only when creating new wiki and need to determine type.
 
@@ -218,6 +228,56 @@ Wiki Health Report: {topic}
 - Structural fixes: Fixed 1 broken link, archived 1 stale page
 - [Semantic] Pending human review: 2 conflicts (list)
 - Suggestion: Few source files in XX domain (only 1), recommend supplement
+```
+
+### Phase 4: Deep-Dive (Knowledge Completion Pipeline)
+
+**deep-dive = lint(Coverage) + ingest(search-fill)**. Not an independent mode, but a combined pipeline.
+
+**Prerequisite**: Requires search tools (active mode). Without search tools, only outputs gap report without auto-filling. Prompts user to manually ingest.
+
+**Flow**:
+
+```
+1. Run lint Coverage check (5-category gap detection)
+   → Output structured Gap Report (see lint-protocol.md)
+
+2. Present Gap Report, request user confirmation
+   → User can: accept all / select subset / limit scope / cancel
+   → This step cannot be skipped — prevents unsupervised batch writes
+
+3. For each confirmed gap, execute from-lint ingest flow
+   → Search → User confirms source → Standard ingest
+   → See From-Lint section in ingest-protocol.md
+
+4. Output completion report: filled / unable to fill / recommendations
+```
+
+**Trigger words**: `deep-dive`, `deep dive`, `fill gaps`, `research gaps`, `level up`
+
+**Example**:
+```
+User: deep-dive treasury-futures
+Agent: [Running Coverage lint...]
+Agent: Found 6 knowledge gaps:
+       1. [high] page_missing: stock-bond-correlation (referenced by 4 pages)
+       2. [high] concept_missing: basis (mentioned in 5 entity pages)
+       3. [medium] single_source: treasury-futures-basics (only 1 source)
+       ...
+       Which to fill? (all / select numbers / cancel)
+
+User: 1, 2
+
+Agent: [Searching "stock bond correlation treasury futures"...]
+Agent: Found 2 candidate sources:
+       - [authoritative-secondary] CICC Fixed Income "Stock-Bond Correlation Analysis" ← Recommended
+       - [secondary] Blog post ← Skip (blacklisted channel)
+       Confirm using CICC report?
+
+User: confirm
+
+Agent: [Execute standard ingest → Create concepts/stock-bond-correlation.md]
+Agent: Completion done. Created 2 pages, updated 0 pages, 1 gap unable to fill (suggest providing materials manually).
 ```
 
 ---

@@ -198,3 +198,76 @@ log.md append:
 - Created: concepts/portable-annuity
 - Conflicts: none
 ```
+
+---
+
+## From-Lint Flow (deep-dive pipeline's ingest stage)
+
+When ingest is triggered by the deep-dive pipeline, the input is not a user-provided source file, but a Gap Report from lint Coverage.
+
+### Differences from Standard Ingest
+
+| Aspect | Standard Ingest | From-Lint Ingest |
+|--------|----------------|------------------|
+| Input | User-provided source file | Gap entries from Gap Report |
+| Source acquisition | User already provided | Agent searches via tools |
+| Batch operation | Usually 1 source file | Possibly N gaps, processed one by one |
+| User confirmation | Not needed (user proactively provided) | Required (confirm scope before search, confirm quality after search) |
+
+### Flow
+
+```
+Input: Gap Report (from lint Coverage)
+
+For each confirmed gap:
+
+1. Create search plan
+   ├─ page_missing → Search basic info about this entity/concept
+   ├─ concept_missing → Search definition and explanation of this term
+   ├─ data_missing → Search latest data for this metric
+   ├─ single_source → Search additional sources for cross-validation
+   └─ outdated → Search latest info about this metric/entity
+
+2. Execute search (requires search tools — active mode)
+   ├─ Use WebSearch / search MCP to get candidate sources
+   ├─ Search tool priority: domain-specific tools > general search
+   ├─ Filter by credibility per source-validation.md
+   └─ Exclude blacklisted channels, take top 1-3 credible sources
+
+3. Present search results, request user confirmation
+   ├─ Show each source's title, URL, credibility grade
+   ├─ User chooses: accept / skip / replace
+   └─ If search quality insufficient → label "unable to fill", skip
+
+4. For each confirmed source, execute standard ingest flow
+   ├─ Steps 1-7 identical to normal ingest
+   └─ Source summary page records deep-dive metadata (see source-validation.md)
+```
+
+### Anti-Expansion Mechanism
+
+- Each gap gets max 3 search attempts (varying keywords). 3 failures → label "unable to fill"
+- Single deep-dive processes max 10 gaps (adjustable via `--max-gaps`)
+- If searched sources introduce entirely new entities not referenced in existing wiki, **do not auto-create pages** — only fill known gaps, don't expand wiki scope
+- All search-sourced content has confidence ceiling of medium (unless source qualifies as primary/authoritative-secondary)
+
+### Completion Report
+
+```
+## Deep-Dive Completion Report: {topic}
+Executed: {date}
+
+### Filled: {N} / {total} gaps
+| # | Gap | Action | Source | Confidence |
+|---|-----|--------|--------|------------|
+| 1 | page_missing: portable-annuity | Created page | [authoritative-secondary] Caixin report | medium |
+| 2 | single_source: alpha-corp | Added 1 source | [secondary] Industry report | medium |
+
+### Unable to Fill: {M} gaps
+| # | Gap | Reason |
+|---|-----|--------|
+| 3 | data_missing: beta-corp/market_share | 3 searches found no credible source |
+
+### Recommendations
+- beta-corp market share data: suggest user manually provide industry report
+```

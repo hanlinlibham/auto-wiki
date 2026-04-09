@@ -111,7 +111,48 @@ Page has `[[slug]]` but corresponding file doesn't exist.
 
 ### 2.7 Coverage (Coverage Assessment) — Semantic
 
-Not finding errors, but finding gaps:
+Not finding errors, but finding gaps. Detect across 5 categories:
+
+#### Gap-1: Page Missing
+
+Referenced by other pages via `[[slug]]` but the actual file doesn't exist. Different from Broken Link—Broken Link is a spelling error, Page Missing is knowledge itself that's absent.
+
+- Detection: Traverse all wikilinks, find references to non-existent pages
+- Threshold: 3+ pages reference the same non-existent slug → Not a typo, it's a knowledge gap
+- Output: `{ gap_type: "page_missing", slug: "xxx", referenced_by: [...] }`
+
+#### Gap-2: Concept Missing
+
+Multiple entity pages repeatedly mention the same term/concept, but there is no independent concept page explaining it.
+
+- Detection: Extract high-frequency terms from entities/ body text, check if concepts/ has corresponding page
+- Threshold: A term appears in 3+ different pages but no independent concept page → Gap
+- Output: `{ gap_type: "concept_missing", term: "xxx", mentioned_in: [...] }`
+
+#### Gap-3: Data Missing
+
+Entity page mentions a metric but data.db has no corresponding value, or value lacks key dimensions (no period, no source).
+
+- Detection: Scan page body for metric names, cross-check data.db
+- Output: `{ gap_type: "data_missing", page: "xxx", field: "xxx" }`
+
+#### Gap-4: Single Source
+
+Page confidence relies on a single source, and that source is not primary/authoritative.
+
+- Detection: sources list length = 1 and source_type is not "primary" or "authoritative-secondary"
+- Output: `{ gap_type: "single_source", page: "xxx", current_source: "xxx" }`
+
+#### Gap-5: Outdated
+
+Different from Staleness—Staleness labels stale candidates, Outdated focuses on data that has newer time points available but wiki hasn't kept up.
+
+- Detection: data.db data period > 12 months ago, and the domain typically has annual updates
+- Output: `{ gap_type: "outdated", page: "xxx", field: "xxx", last_period: "xxx" }`
+
+#### Coverage Heuristics (supplementary)
+
+Beyond the 5 categories above, retain original heuristic checks:
 - Entity referenced by 5 other pages but content is thin (< 100 words) → Suggest deepening
 - Few pages of certain type (e.g., concepts/) but many entities/ → Suggest extracting concepts
 - Many source pages but few analysis pages → Suggest comprehensive analysis
@@ -145,3 +186,34 @@ Generated: {date}
 - Most isolated entity: portfolio-category (0 incoming links)
 - Recent ingest: 2026-04-06 (3 days ago)
 ```
+
+## Gap Report Format (for deep-dive)
+
+When Coverage check is triggered by deep-dive, output a structured Gap Report in addition to the health report:
+
+```
+## Gap Report: {topic}
+Generated: {date}
+Scope: {full | specified range}
+
+### Gaps Found: {N}
+
+| # | Category | Target | Detail | Priority | Search Direction |
+|---|----------|--------|--------|----------|------------------|
+| 1 | page_missing | portable-annuity | Referenced by 4 pages | high | Search "portable enterprise annuity policy" |
+| 2 | concept_missing | trustee qualification | Mentioned in 5 entity pages | high | Search "enterprise annuity trustee requirements" |
+| 3 | single_source | alpha-corp | Only source: industry-report-2025 | medium | Search "Alpha Corp pension annual report" |
+
+### Priority Rules
+- high: page_missing (3+ references), concept_missing (5+ mentions)
+- medium: single_source, data_missing
+- low: outdated (data age 12-24 months)
+```
+
+### Scope Control (deep-dive scenario)
+
+When triggered by deep-dive, Coverage accepts optional scope parameters:
+- `deep-dive {topic}` → Limit to specified wiki
+- `deep-dive {topic} entities/` → Limit to subdirectory
+- `deep-dive {topic} --max-gaps N` → Limit max gaps (default 10)
+- No scope specified → Follow semantic level scope rules (<50 pages full scan, 50-200 pages last 30 days, >200 pages require specification)
