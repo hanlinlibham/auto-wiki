@@ -19,6 +19,8 @@
 Send `tools/call` request via MCP protocol, tool name = `sparql`, parameter is SPARQL query string.
 Need to `initialize` first to get `Mcp-Session-Id`, subsequent requests include that header.
 
+> **No user credentials needed**: `Mcp-Session-Id` is a standard session identifier for MCP Streamable HTTP transport (similar to HTTP Session), automatically obtained by the agent during `initialize`. No API key or secrets required from the user. The endpoint is a public read-only SPARQL query service.
+
 ## Three Validation Levels
 
 schema.py validates page format (frontmatter field presence, type correctness).

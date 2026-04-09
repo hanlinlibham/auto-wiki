@@ -3,8 +3,9 @@ name: auto-wiki
 version: 0.2.0
 description: |
   知识编译器：教 Agent 把源文件增量编译进持久化 wiki，实现跨会话知识积累。
+  运行时依赖：Python 3.8+（标准库 + pydantic）。可选增强：WebSearch（主动搜索）、外部 MCP 校验器（逻辑校验）。
 
-  四个模式，根据用户意图自动路由：
+  五个模式，根据用户意图自动路由：
 
   recall → 用户想基于已有知识回答问题。
   触发词：recall、知识模式、打开 wiki、带着知识回答、根据 wiki、
@@ -34,6 +35,19 @@ description: |
 # 知识编译器
 
 > Agent 做研究、拉数据、写报告——wiki 把这些产出串起来。Agent 越用越懂你的领域。
+
+## 运行时依赖与权限声明
+
+| 依赖 | 必需？ | 说明 |
+|------|--------|------|
+| **Python 3.8+** | ✅ 必需 | `schema.py`（frontmatter 校验）、`store.py`（SQLite 数据管理）、`build_index.py`（FTS5 索引）均为 Python 脚本。仅用标准库（`sqlite3`、`json`、`pathlib`）+ `pydantic` |
+| **pydantic** | ✅ 必需 | `schema.py` 的 frontmatter 校验依赖。`pip install pydantic` |
+| **文件系统写入** | ✅ 必需 | 在 `.wiki/{topic}/` 下创建和编辑 Markdown、SQLite、`.obsidian/` 配置。**首次创建 `.wiki/` 时会向用户确认位置** |
+| **WebSearch / WebFetch** | ❌ 可选 | 主动模式（Agent 自主搜索材料）需要。被动模式（用户提供文件）不需要 |
+| **外部校验器（MCP）** | ❌ 可选 | 仅当 wiki 声明了 validator 时 lint 会尝试调用。不可达时静默跳过，零影响。**不需要用户提供任何凭证**——`Mcp-Session-Id` 是标准 MCP 协议的会话握手，由 Agent 自动完成 |
+| **搜索类 MCP** | ❌ 可选 | deep-dive 和主动 ingest 可用域数据 MCP 增强搜索质量。没有时退化为 WebSearch |
+
+> **核心承诺**：被动模式（用户提供文件 → Agent 编译）只需要 Python 3 + 文件读写，零网络依赖。所有网络调用都是可选增强，且会在首次使用时通过环境检查告知用户。
 
 ## Quick Start
 
@@ -141,7 +155,7 @@ Agent 执行：
 
 **一个 wiki 只有一种类型。** 如果研究横跨人和领域（如"Munger 的投资框架在企业年金中的应用"），分属两个 wiki，用跨 wiki query 综合回答。不要在一个 wiki 里混用 cognitive 和 domain 页面结构。
 
-**如果 wiki 目录不存在**，按 `references/storage-spec.md` 创建初始结构（含 meta.yaml、index.md 模板、log.md 模板）。
+**如果 wiki 目录不存在**，先向用户确认创建位置（默认 `.wiki/{topic}/`，在当前仓库根目录下），然后按 `references/storage-spec.md` 创建初始结构（含 meta.yaml、index.md 模板、log.md 模板）。建议用户将 `.wiki/` 加入 `.gitignore`（如尚未添加）。
 
 **领域种子（seed）**：如果目标领域有对应的种子文件（`seeds/{name}.md`），在 meta.yaml 中声明 `seed: {name}`。种子提供标准术语词表、关系模板和禁混规则，让 wiki 从规范化的起点开始生长。没有种子的领域，wiki 自由生长——两种路径都能跑。种子是社区可贡献的插件，任何人可以为自己的垂直领域写一个 markdown 文件。详见 `references/seed-ontologies.md`。
 

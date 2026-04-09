@@ -3,8 +3,9 @@ name: knowledge-compiler
 version: 0.2.0
 description: |
   Knowledge compiler: teaches agents to incrementally compile source files into persistent wikis for cross-session knowledge accumulation.
-  
-  Four modes, automatically routed based on user intent:
+  Runtime dependencies: Python 3.8+ (stdlib + pydantic). Optional enhancements: WebSearch (active search), external MCP validator (logic validation).
+
+  Five modes, automatically routed based on user intent:
   
   recall → User wants to answer questions based on existing knowledge.
   Trigger words: recall, knowledge mode, open wiki, answer with knowledge, according to wiki,
@@ -29,6 +30,19 @@ description: |
 # Knowledge Compiler
 
 > Agents do research, pull data, write reports—the wiki connects these outputs. The more you use the agent, the more it understands your domain.
+
+## Runtime Dependencies & Permissions
+
+| Dependency | Required? | Description |
+|------------|-----------|-------------|
+| **Python 3.8+** | ✅ Required | `schema.py` (frontmatter validation), `store.py` (SQLite data management), `build_index.py` (FTS5 indexing) are Python scripts. Uses only stdlib (`sqlite3`, `json`, `pathlib`) + `pydantic` |
+| **pydantic** | ✅ Required | Frontmatter validation in `schema.py`. `pip install pydantic` |
+| **Filesystem write** | ✅ Required | Creates and edits Markdown, SQLite, `.obsidian/` config under `.wiki/{topic}/`. **Will confirm location with user before first `.wiki/` creation** |
+| **WebSearch / WebFetch** | ❌ Optional | Needed for active mode (agent searches for materials autonomously). Not needed for passive mode (user provides files) |
+| **External validator (MCP)** | ❌ Optional | Only called during lint when wiki declares a validator. Silently skipped when unreachable, zero impact. **No user credentials needed** — `Mcp-Session-Id` is standard MCP protocol session handshake, handled automatically by the agent |
+| **Domain data MCP** | ❌ Optional | deep-dive and active ingest can use domain data MCP for enhanced search quality. Falls back to WebSearch when absent |
+
+> **Core promise**: Passive mode (user provides files → agent compiles) only requires Python 3 + filesystem access, zero network dependencies. All network calls are optional enhancements, and the environment check on first use will inform the user of available capabilities.
 
 ## Quick Start
 
@@ -142,7 +156,7 @@ After receiving user input, determine three things: **operation type**, **target
 
 **A wiki has only one type.** If research spans both person and domain (e.g., "Munger's investment framework applied to enterprise annuity"), it belongs to two wikis, with cross-wiki query for synthesis. Don't mix cognitive and domain page structures in one wiki.
 
-**If wiki directory doesn't exist**, create initial structure per `references/storage-spec.md` (including meta.yaml, index.md template, log.md template).
+**If wiki directory doesn't exist**, first confirm creation location with user (default `.wiki/{topic}/` under current repository root), then create initial structure per `references/storage-spec.md` (including meta.yaml, index.md template, log.md template). Suggest user add `.wiki/` to `.gitignore` if not already present.
 
 **Domain seed**: If the target domain has a corresponding seed file (`seeds/{name}.md`), declare `seed: {name}` in meta.yaml. Seeds provide standard terminology, relationship templates, and anti-confusion rules, letting wikis start from a normalized foundation. Domains without seeds grow freely — both paths work. Seeds are community-contributable plugins — anyone can write a markdown file for their vertical domain. See `references/seed-ontologies.md`.
 

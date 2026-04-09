@@ -19,6 +19,8 @@
 通过 MCP 协议发送 `tools/call` 请求，tool name = `sparql`，参数为 SPARQL 查询字符串。
 需要先 `initialize` 获取 `Mcp-Session-Id`，后续请求带上该 header。
 
+> **无需用户凭证**：`Mcp-Session-Id` 是 MCP Streamable HTTP 传输层的标准会话标识（类似 HTTP Session），由 Agent 调用 `initialize` 时自动获取，不需要用户配置 API key 或任何密钥。该端点为公开只读 SPARQL 查询服务。
+
 ## 校验的三个层次
 
 schema.py 校验页面格式（frontmatter 字段有没有、类型对不对）。
