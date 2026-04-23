@@ -28,6 +28,32 @@
 - YAML frontmatter → Obsidian Properties 面板，可按 confidence、type 等字段过滤
 - `sources/`、`entities/`、`concepts/` 目录 → Obsidian 文件夹视图
 
+#### 目录中文别名
+
+目录名保持英文（schema.py / graph.json / CLI 依赖），但通过 Obsidian Folder Note 显示中文含义。Agent 在创建 wiki 时，为每个子目录生成一个同名的 folder note：
+
+| 目录 | 中文含义 | Folder Note |
+|------|---------|-------------|
+| `sources/` | 来源 | `sources/sources.md`（title: "来源"） |
+| `entities/` | 实体 | `entities/entities.md`（title: "实体"） |
+| `concepts/` | 概念 | `concepts/concepts.md`（title: "概念"） |
+| `analyses/` | 分析 | `analyses/analyses.md`（title: "分析"） |
+| `mental-models/` | 心智模型 | `mental-models/mental-models.md`（title: "心智模型"） |
+
+Folder Note 内容极简，仅作导航说明：
+
+```markdown
+---
+title: 来源
+---
+# 来源（Sources）
+
+本目录存放源文件摘要页。每次 ingest 产生一个 source 页面，记录原始材料的关键信息。
+Source 页面创建后不可变。
+```
+
+在 Obsidian Settings → Core plugins 中启用 **Folder notes**，点击文件夹时会打开对应的 folder note 而非展开目录。
+
 **首次创建 `.wiki/` 时**，Agent 应初始化 `.obsidian/` 配置目录，启用图谱着色：
 
 ```
@@ -35,7 +61,7 @@
 ├── graph.json       # 图谱配色方案（按 path 和 tag 分组着色）
 ├── app.json         # {}
 ├── appearance.json  # {}
-└── core-plugins.json # 启用 graph、backlink、properties、tag-pane
+└── core-plugins.json # 启用 graph、backlink、properties、tag-pane、folder-note
 ```
 
 `graph.json` 预设 5 个颜色分组：
@@ -75,17 +101,20 @@
 ├── index.md                 # 页面目录（Agent 自动维护）
 ├── log.md                   # 操作日志（append-only）
 ├── _report.html             # 可视化报告（schema.py --report 生成）
-├── sources/                 # 源文件摘要页（不可变）
-│   ├── 2026-04-06-policy-doc.md
-│   └── 2026-04-03-annual-report.md
-├── entities/                # 实体页（叙事分析）
-│   ├── alpha-corp.md
-│   └── regulatory-agency.md
-├── concepts/                # 概念页
-│   ├── fiduciary-responsibility.md
-│   └── portable-annuity.md
-└── analyses/                # 分析归档页（query 产出）
-    └── market-comparison.md
+├── sources/                 # 来源：源文件摘要页（不可变）
+│   ├── sources.md           #   folder note（标题："来源"）
+│   ├── 2026-04-06-政策文件.md
+│   └── 2026-04-03-年度报告.md
+├── entities/                # 实体：机构、人物、产品（叙事分析）
+│   ├── entities.md          #   folder note（标题："实体"）
+│   └── 某机构.md
+├── concepts/                # 概念：制度、方法、指标
+│   ├── concepts.md          #   folder note（标题："概念"）
+│   ├── 受托人市场格局.md
+│   └── 可携带企业年金.md
+└── analyses/                # 分析：query 产出的归档分析
+    ├── analyses.md          #   folder note（标题："分析"）
+    └── 市场格局对比分析.md
 ```
 
 ### 数据分层原则
@@ -136,6 +165,18 @@ stats:
 | stats | 是 | 页面统计（Agent / lint 更新） |
 
 ## 初始化模板
+
+### 新建 Wiki 时创建 Folder Notes
+
+为每个子目录创建同名 folder note（极简，仅导航说明）：
+
+| 文件 | title |
+|------|-------|
+| `sources/sources.md` | 来源 |
+| `entities/entities.md` | 实体 |
+| `concepts/concepts.md` | 概念 |
+| `analyses/analyses.md` | 分析 |
+| `mental-models/mental-models.md`（cognitive 类型时） | 心智模型 |
 
 ### 新建 Wiki 时创建的 index.md
 

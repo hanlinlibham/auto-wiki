@@ -13,19 +13,19 @@
 ├── meta.yaml         # Wiki 元数据（见 storage-spec.md）
 ├── index.md          # 页面目录（Agent 维护，按类型分组）
 ├── log.md            # 操作日志（append-only，人类可读）
-├── sources/          # 源文件摘要
-├── entities/         # 实体页（机构、人物、产品）
-├── concepts/         # 概念页（制度、方法、指标）
-└── analyses/         # 分析归档（query 产出的有价值分析）
+├── sources/          # 来源：源文件摘要（含 folder note）
+├── entities/         # 实体：机构、人物、产品（含 folder note）
+├── concepts/         # 概念：制度、方法、指标（含 folder note）
+└── analyses/         # 分析：query 产出的归档分析（含 folder note）
 ```
 
 cognitive 类型 wiki 的目录变体：
 ```
 {人物名}/
-├── mental-models/    # 替代 entities/——每个心智模型一个页面
-├── concepts/         # 启发式、价值观、表达风格、矛盾
-├── sources/          # 采集来源
-└── analyses/         # 分析归档
+├── mental-models/    # 心智模型：替代 entities/（含 folder note）
+├── concepts/         # 概念：启发式、价值观、表达风格、矛盾
+├── sources/          # 来源：采集来源
+└── analyses/         # 分析：分析归档
 ```
 
 ## 页面格式
@@ -46,9 +46,9 @@ title: 页面标题
 type: entity                    # entity | concept | source | analysis | mental-model
 created: 2026-04-06
 updated: 2026-04-06
-sources: [source-slug-1, source-slug-2]
+sources: [来源页slug-1, 来源页slug-2]
 confidence: high                # high | medium | low | contested
-tags: [entity]                  # 必填：页面类型 + 可选状态标签
+tags: [实体]                    # 必填：中文页面类型标签 + 可选状态标签
 aliases: []                     # 可选：页面别名
 ---
 ```
@@ -66,25 +66,47 @@ aliases: []                     # 可选：页面别名
 
 ### tags 规则（Obsidian 搜索过滤必需）
 
-`tags` 必须包含页面类型（`source` / `entity` / `concept` / `analysis` / `mental-model`），可追加状态标签：
+`tags` 必须包含页面类型标签，可追加状态标签。**中文 wiki 使用中文标签**：
 
 ```yaml
 tags:
-  - concept                    # 必填：页面类型
-  - contested                  # 可选：confidence=contested 时加
-  - low-confidence             # 可选：confidence=low 时加
+  - 概念                       # 必填：页面类型
+  - 争议                       # 可选：confidence=contested 时加
+  - 低置信                     # 可选：confidence=low 时加
 ```
+
+页面类型标签对照：
+
+| 页面类型 | 中文标签 |
+|---------|---------|
+| source | `来源` |
+| entity | `实体` |
+| concept | `概念` |
+| analysis | `分析` |
+| mental-model | `心智模型` |
+
+状态标签：`争议`（contested）、`低置信`（low-confidence）
 
 source 类型页面额外加来源等级标签：
 
 ```yaml
 tags:
-  - source
-  - primary-source             # 一手来源
-  # 或 authoritative-secondary / secondary / hearsay / inference
+  - 来源
+  - 一手来源                    # 一手
+  # 或 权威二手 / 二手 / 转述 / 推断
 ```
 
-这些标签用于 Obsidian 搜索过滤（如在搜索栏输入 `tag:#contested` 快速定位有争议的页面）。图谱着色不依赖 tags——靠 `path:` 规则区分页面类型，靠 `[confidence:contested]` Properties 查询高亮风险节点。
+来源等级对照：
+
+| source_type | 中文标签 |
+|-------------|---------|
+| 一手 | `一手来源` |
+| 二手·权威 | `权威二手` |
+| 二手 | `二手` |
+| 转述 | `转述` |
+| 推断 | `推断` |
+
+这些标签用于 Obsidian 搜索过滤（如在搜索栏输入 `tag:#争议` 快速定位有争议的页面）。图谱着色不依赖 tags——靠 `path:` 规则区分页面类型，靠 `[confidence:contested]` Properties 查询高亮风险节点。
 
 ### aliases 规则
 
