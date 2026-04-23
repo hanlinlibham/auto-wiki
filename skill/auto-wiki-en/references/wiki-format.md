@@ -231,40 +231,93 @@ See [[market_landscape]].
 - Can use `> ⚠️` blockquote to label important warnings (e.g., scope differences)
 - Analytical content is core value of body—what YAML cannot carry
 
+### Page Bottom: `## Relations` (Recommended)
+
+Render frontmatter `relations` in natural language so the agent gets structural context while reading the body, without needing to parse YAML separately. Don't rewrite the body — just add a closing section.
+
+```markdown
+## Relations
+
+- **Part of**: [[personal-pension-system]]
+- **Drivers**: [[tax-incentive-effect]] ⚠️contested, [[enrollment-friction]]
+- **International comparison**: [[ira-usa]] (contrasted_with)
+```
+
+### Data-Heavy Pages: `## Key Data` (Recommended)
+
+When a page has corresponding data points in data.db, add a lightweight section informing the agent "structured data exists here." Not a database echo — a data anchor.
+
+```markdown
+## Key Data
+
+| Metric | Value | Period | Source |
+|--------|-------|--------|--------|
+| Annual contribution limit | 12,000 CNY/yr | 2022 | [[state-council-2022-7]] |
+| Actual contribution rate | 25% | 2023-10 | [[ism-study-pension]] |
+
+Full data and change history available in `data.db`.
+```
+
 ---
 
-## File Naming
+## File Naming & Slug Unification (Critical)
 
-- slug format: lowercase letters + hyphens, e.g., `alpha-corp.md`
-- Chinese concepts use Chinese slug: `受托人市场格局.md` (Obsidian-friendly) or pinyin slug
+**Each page has exactly one canonical slug, used across ALL layers.**
+
+| Layer | Use same slug | Anti-pattern (split-brain) |
+|-------|-------------|---------------------------|
+| Filename | `tax-incentive-effect.md` | File named one way, DB uses another |
+| frontmatter `sources` | `["sem-study-2024"]` | Inconsistent slug reference |
+| `data.db` `pages.slug` | `tax-incentive-effect` | Different from filename |
+| `data.db` `relations` | `from: tax-incentive-effect` | Different from filename |
+| `[[wikilink]]` | `[[tax-incentive-effect]]` | Different from filename |
+
+**Rules**:
+- slug = filename without `.md` = `data.db` `page_slug` = `relations` `from_slug`/`to_slug` = `[[wikilink]]` target
+- Chinese wikis use Chinese slugs (Obsidian-friendly, human-readable)
+- English wikis use English slugs: lowercase + hyphens, e.g., `alpha-corp`
 - Source pages add date prefix: `2026-04-06-hrss-report.md` (hyphen-separated)
+- **During ingest, the agent MUST use the same slug for both file operations and data.db — two naming systems are never allowed**
 
 ## index.md Format
 
-Index only does navigation, doesn't inline data:
+Index is the **first file** the agent reads when entering recall — it must provide both navigation and structural awareness.
 
 ```markdown
 # {topic_name} Wiki Index
 
 > {N} pages | Last updated: {date} | Type: {ontology_type}
+> ⚠️ Contested: [[page-a]], [[page-b]]
+
+## Knowledge Structure
+
+Core topology (only show hub nodes and key edges, don't dump entire graph):
+
+{core-concept} ── part_of ──→ {parent-concept}
+  ├── {sub-a} ←── derived_from ── {sub-b} ⚠️contested
+  ├── {sub-c} ←── contrasted_with ── {intl-comparison}
+  └── {sub-d}
 
 ## Entities ({N})
 - [[alpha-corp]] — Institution A Pension Business
 - [[beta-corp]] — Institution B Pension Insurance
 
 ## Concepts ({N})
-- [[trustee_market_landscape]] — Trustee competitive landscape and share
-- [[enterprise_annuity_system]] — Policy regulations and system framework
+- [[trustee-market-landscape]] — Trustee competitive landscape and share
+- [[enterprise-annuity-system]] — Policy regulations and system framework
 
 ## Sources ({N})
 - [[2026-04-06-hrss-report]] — MOHRSS 2024 Annual Report
 - [[2026-04-06-q1-briefing]] — 2025 Q1 Market Briefing
 
 ## Analyses ({N})
-- [[trustee_comparison]] — Trustee market landscape comparative analysis
+- [[trustee-comparison]] — Trustee market landscape comparative analysis
 ```
 
-**Index rules**: Each entry one line, `[[slug]] — One sentence description`. No tables, no statistical data.
+**Index rules**:
+- Top header includes contested page list (if any) — agent sees unreliable knowledge at first glance upon entering recall
+- `## Knowledge Structure` uses text tree showing 5-8 hub nodes + key relationship edges + contested markers, giving agent immediate structural awareness
+- Category listings: one entry per line, `[[slug]] — One sentence description`
 
 ## log.md Format
 

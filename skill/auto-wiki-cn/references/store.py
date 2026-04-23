@@ -237,7 +237,8 @@ class WikiStore:
         s["pages"] = self.conn.execute("SELECT COUNT(*) FROM pages").fetchone()[0]
         s["data_points"] = self.conn.execute("SELECT COUNT(*) FROM data_points").fetchone()[0]
         s["relations"] = self.conn.execute("SELECT COUNT(*) FROM relations").fetchone()[0]
-        s["contested"] = self.conn.execute("SELECT COUNT(*) FROM data_points WHERE confidence='contested'").fetchone()[0]
+        s["contested_pages"] = self.conn.execute("SELECT COUNT(*) FROM pages WHERE confidence='contested'").fetchone()[0]
+        s["contested_data"] = self.conn.execute("SELECT COUNT(*) FROM data_points WHERE confidence='contested'").fetchone()[0]
         for row in self.conn.execute("SELECT type, COUNT(*) as cnt FROM pages GROUP BY type").fetchall():
             s[f"pages_{row['type']}"] = row["cnt"]
         return s
@@ -248,7 +249,7 @@ class WikiStore:
         lines = [
             f"Wiki Store: {self.wiki_dir.name}",
             f"{'='*50}",
-            f"Pages: {st['pages']} | Data Points: {st['data_points']} | Relations: {st['relations']} | Contested: {st['contested']}",
+            f"Pages: {st['pages']} | Data Points: {st['data_points']} | Relations: {st['relations']} | Contested Pages: {st['contested_pages']} | Contested Data: {st['contested_data']}",
             "",
         ]
         # pages by type

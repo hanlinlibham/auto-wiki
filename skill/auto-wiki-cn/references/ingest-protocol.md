@@ -43,7 +43,10 @@
 
 5. 创建/更新 Markdown 页面
    ├─ 新实体/概念 → 按 wiki-format.md 创建页面（frontmatter 只存元数据）
+   ├─ **Slug 统一**：文件名（去 .md）= data.db page_slug = relations slug = wikilink 目标，不允许出现两套命名
    ├─ 正文写叙事分析，引述数据结论但不重复具体数值
+   ├─ 页面末尾加 `## 关联` 段落，用自然语言显式化 frontmatter 中的 relations（见 wiki-format.md）
+   ├─ 数据密集页面加 `## 关键数据` 段落，列出该页在 data.db 中的数据点摘要（见 wiki-format.md）
    ├─ 添加 wikilinks 到已有相关页面
    └─ 在已有相关页面中也加上指向新页面的 wikilink
 

@@ -43,7 +43,10 @@
 
 5. Create/update Markdown pages
    ├─ New entities/concepts → Create pages per wiki-format.md (frontmatter only stores metadata)
+   ├─ **Slug unification**: filename (without .md) = data.db page_slug = relations slug = wikilink target — two naming systems never allowed
    ├─ Body writes narrative analysis, cites data conclusions but doesn't repeat specific values
+   ├─ Add `## Relations` section at page bottom, explicitly describing frontmatter relations in natural language (see wiki-format.md)
+   ├─ Data-heavy pages add `## Key Data` section, summarizing data points from data.db for that page (see wiki-format.md)
    ├─ Add wikilinks to existing related pages
    └─ Add wikilink to new page in existing related pages
 

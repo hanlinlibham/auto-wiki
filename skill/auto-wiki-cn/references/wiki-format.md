@@ -231,22 +231,72 @@ verification:
 - 可以用 `> ⚠️` blockquote 标注重要警告（如口径差异）
 - 分析性内容是正文的核心价值——这是 YAML 无法承载的部分
 
+### 页面末尾：`## 关联`（推荐）
+
+把 frontmatter `relations` 用自然语言显式化，让 Agent 读正文时就获得结构上下文，不需要额外解析 YAML。不重写正文主体，只在底部收口。
+
+```markdown
+## 关联
+
+- **属于**：[[个人养老金制度]]
+- **驱动因素**：[[税优激励效果]] ⚠️contested、[[参与摩擦]]
+- **国际对标**：[[美国IRA制度]]（contrasted_with）
+```
+
+### 数据密集页面：`## 关键数据`（推荐）
+
+当页面在 data.db 中有对应数据点时，加一个轻量段落告知 Agent "这里有结构化数据可查"。不是数据库回显，而是数据锚点。
+
+```markdown
+## 关键数据
+
+| 指标 | 值 | 时点 | 来源 |
+|------|-----|------|------|
+| 年度缴费上限 | 12,000 元/年 | 2022 | [[国办发〔2022〕7号]] |
+| 实际缴费率 | 25% | 2023-10 | [[个人养老金参与意愿ISM研究]] |
+
+完整数据及历史变更见 `data.db`。
+```
+
 ---
 
-## 文件命名
+## 文件命名与 Slug 统一（关键）
 
-- slug 格式：小写字母 + 连字符，如 `alpha-corp.md`
-- 中文概念用中文 slug：`受托人市场格局.md`（Obsidian 友好）或拼音 slug
+**一个页面只有一个 canonical slug，所有层必须使用同一个。**
+
+| 层 | 用同一个 slug | 反例（split-brain） |
+|----|-------------|-------------------|
+| 文件名 | `税优激励效果.md` | 文件名中文，DB 里 `tax-incentive-effect` |
+| frontmatter `sources` | `["居民参与个人养老金SEM研究"]` | 写英文 slug 而文件名是中文 |
+| `data.db` `pages.slug` | `税优激励效果` | 英文 canonical slug |
+| `data.db` `relations` | `from: 税优激励效果` | 英文 slug |
+| `[[wikilink]]` | `[[税优激励效果]]` | 写英文 slug |
+
+**规则**：
+- slug = 文件名去 `.md` = `data.db` 中的 `page_slug` = `relations` 中的 `from_slug`/`to_slug` = `[[wikilink]]` 目标
+- 中文 wiki 用中文 slug（Obsidian 友好，人类可读）
+- 英文 wiki 用英文 slug：小写字母 + 连字符，如 `alpha-corp`
 - source 页面加日期前缀：`2026-04-06-hrss-report.md`（连字符分隔）
+- **ingest 时 Agent 必须用同一个 slug 同时操作文件和 data.db，不允许出现两套命名**
 
 ## index.md 格式
 
-index 只做导航，不内联数据：
+index 是 Agent 进入 recall 时读的**第一个文件**，需要同时提供导航和结构感。
 
 ```markdown
 # {主题名} Wiki Index
 
 > {N} pages | Last updated: {日期} | Type: {ontology_type}
+> ⚠️ Contested: [[页面A]]、[[页面B]]
+
+## 知识结构
+
+核心拓扑（只展示 hub 节点和关键边，不 dump 全图）：
+
+{核心概念} ── part_of ──→ {上位概念}
+  ├── {子概念A} ←── derived_from ── {子概念B} ⚠️contested
+  ├── {子概念C} ←── contrasted_with ── {国际比较概念}
+  └── {子概念D}
 
 ## Entities ({N})
 - [[alpha-corp]] — 机构 A 养老金业务
@@ -264,7 +314,10 @@ index 只做导航，不内联数据：
 - [[trustee-comparison]] — 受托人市场格局对比分析
 ```
 
-**index 规则**：每个条目一行，`[[slug]] — 一句话描述`。不放表格、不放统计数据。
+**index 规则**：
+- 顶部 header 包含 contested 页面列表（如有），Agent 进入 recall 第一眼就知道哪些知识不可靠
+- `## 知识结构` 用文本树展示 5-8 个 hub 节点 + 关键关系边 + contested 标记，让 Agent 一读就建立全局结构感
+- 分类清单每个条目一行，`[[slug]] — 一句话描述`
 
 ## log.md 格式
 
