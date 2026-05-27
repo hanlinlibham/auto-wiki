@@ -317,20 +317,22 @@ Both share the same wiki infrastructure (ingest/query/lint), differing only in p
 
 ## Vertical Domain Adaptation
 
-The skill core is a domain-agnostic compilation engine. Vertical domain expertise is injected through two plugin layers:
+The skill core is a domain-agnostic compilation engine. Vertical domain expertise is injected through three plugin layers, all optional, all stackable:
 
-| Layer | Carrier | Purpose | Required? |
-|-------|---------|---------|-----------|
-| **Seed** | `seeds/{name}.md` | Cold-start vocabulary: standard terms, relationship templates, anti-confusion rules | Optional |
-| **Validator** | `validators/{name}.md` | Runtime logical validation: relationship legality, required relation completeness | Optional |
+| Layer | Carrier | Purpose | Can block writes? |
+|-------|---------|---------|-------------------|
+| **Seed** | `seeds/{name}.md` | Cold-start vocabulary: standard terms, relationship templates, anti-confusion rules | No (advisory) |
+| **Validator** | `validators/{name}.md` | Lint-time integrity checks (relationship legality, required relations) | No (lint-time only) |
+| **Governance** | `references/governance/{name}.md` | Pre-write route/conflict gating between candidate extraction and wiki write | **Yes** (route-before-store) |
 
-Without plugins, wikis grow freely — suitable for exploratory research. With plugins, wikis start from industry standards with normalized naming, clear relationship structures, and detectable logic gaps.
+Without plugins, wikis grow freely — suitable for exploratory research. With plugins, wikis start from industry standards with normalized naming, clear relationship structures, detectable logic gaps, and (with governance) a review queue between agent proposal and canonical acceptance.
 
-**Community-contributable**: Write a seed file (markdown) for your vertical domain — declare 20-50 core terms and anti-confusion rules, and wikis in that domain start from a normalized foundation.
+**Community-contributable**: Write a seed / validator / governance module file for your vertical domain — declare 20-50 core terms and anti-confusion rules, or wire in a governance backend, and downstream wikis in that domain reuse it.
 
 Currently available:
 - `seeds/fibo-pensions.md` — Enterprise annuity / pensions (based on FIBO standard)
 - `validators/fibo-mcp.md` — FIBO SPARQL logical validation (627K inferred triples)
+- `references/governance/ontology-mem.md` — Route-before-store + 5-rule conflict detector + append-only ledger (use when wrong long-term memory has real downstream cost: finance / healthcare / compliance / multi-user)
 
 ## What This Skill Doesn't Do
 

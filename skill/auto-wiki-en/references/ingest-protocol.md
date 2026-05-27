@@ -2,6 +2,52 @@
 
 > Ingest is not appending files, it's compilation—read old, compare new, modify old.
 
+<a id="governance-hook"></a>
+## Governance Hook (when meta.yaml declares `governance:`)
+
+If `meta.yaml` declares a governance module (e.g.
+`governance: ontology-mem`), the ingest flow gains a mandatory
+**route-before-write** step. The standard flow described below
+remains intact, but each extracted candidate must pass the
+governance gate before it can land in the wiki.
+
+```
+candidates = extract_candidates(source_file)
+for each candidate:
+    verdict = governance.ingest_candidate(candidate)    # MCP / library call
+    if verdict.status == "verified":
+        run standard write path on this candidate
+    elif verdict.status in ("needs_review", "conflict_checked"):
+        surface as review card; DO NOT write
+    elif verdict.status == "rejected":
+        log_md.append(reason); skip
+```
+
+`origin_role` is mandatory on every candidate. Use:
+
+| Source of candidate | `origin_role` |
+|---|---|
+| Verbatim extract from a user-provided file | `extractor` |
+| User text in chat | `user` |
+| Agent inference / paraphrase | `agent` |
+| Internal (schema audit, migration) | `system` |
+
+The governance module decides routing and conflict status. The wiki
+write path runs only on items the module verified. Items with
+`needs_review` or `conflict_checked` go into the governance review
+queue and surface to the user as inline review cards (one per item)
+showing severity, reason, and inline `verify` / `reject` / `promote`
+actions.
+
+If the governance module is unreachable, **refuse the ingest** —
+do not silently fall back to the no-governance path. Loud failure
+beats silent corruption.
+
+See [`governance/protocol.md`](governance/protocol.md) for the
+extension model and
+[`governance/ontology-mem.md`](governance/ontology-mem.md) for the
+concrete plugin.
+
 ## Flow
 
 ```

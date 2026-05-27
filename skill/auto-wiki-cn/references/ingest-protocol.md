@@ -2,6 +2,48 @@
 
 > Ingest 不是追加文件，是编译——读旧、比新、改旧。
 
+<a id="governance-hook"></a>
+## Governance 钩子（当 meta.yaml 声明 `governance:` 时）
+
+当 `meta.yaml` 声明了 governance 模块（如
+`governance: ontology-mem`），ingest 流程多一个**强制的
+route-before-write 步骤**。下面的标准流程保持不变，但每个抽出的
+candidate 在能落入 wiki 之前，必须先通过 governance 门。
+
+```
+candidates = extract_candidates(source_file)
+for each candidate:
+    verdict = governance.ingest_candidate(candidate)    # MCP / 库调用
+    if verdict.status == "verified":
+        对该 candidate 跑标准写入路径
+    elif verdict.status in ("needs_review", "conflict_checked"):
+        作为 review 卡片呈现; **不**写入
+    elif verdict.status == "rejected":
+        log_md.append(原因); 跳过
+```
+
+每个 candidate **必须**带 `origin_role`：
+
+| candidate 来源 | `origin_role` |
+|---|---|
+| 用户提供文件的原文抽取 | `extractor` |
+| 用户在对话里的输入 | `user` |
+| agent 推断 / 改写 | `agent` |
+| 内部行为（schema 审计、迁移）| `system` |
+
+governance 模块决定路由和冲突状态。wiki 写入路径**只对**模块判为
+verified 的项执行。`needs_review` 或 `conflict_checked` 的项进
+governance review 队列，以 inline review 卡片形式呈现（一项一卡），
+显示严重度、原因、以及 inline 的 `verify` / `reject` / `promote`
+按钮。
+
+如果 governance 模块连不上，**拒绝 ingest** —— **不要**静默回落到无
+治理路径。响亮失败胜过静默腐败。
+
+详见 [`governance/protocol.md`](governance/protocol.md) 的扩展模型，
+和 [`governance/ontology-mem.md`](governance/ontology-mem.md) 的具体
+插件。
+
 ## 流程
 
 ```
