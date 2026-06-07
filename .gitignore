@@ -8,3 +8,4 @@ data.db
 draft/
 *.egg-info/
 .env
+.omx/
