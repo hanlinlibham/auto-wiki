@@ -2,6 +2,8 @@
 
 [English](README.md) | [中文](README.zh.md)
 
+> 🏠 **想要围绕这个编译器的自治知识工作区？** [**Burrow（陋居）**](https://github.com/abuttoncc/Burrow) 内置 auto-wiki 作为编译引擎，并补上治理层：唯一写入闸门、影子闸账本（agent 靠零驳回连胜挣得自动晋升权）、审核队列、夜间研究飞轮。
+
 教你的 AI Agent 构建和维护持久化知识 wiki——让它不再做完就忘。
 
 ![RAG vs 编译](docs/figure/01rag.png)

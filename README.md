@@ -12,6 +12,8 @@
 > You have access to the auto-wiki knowledge compiler skill. Read the SKILL.md file at https://github.com/hanlinlibham/auto-wiki/tree/main/skill/auto-wiki-en to learn how to build and maintain persistent wikis with five modes: recall, ingest, query, lint, deep-dive.
 > ```
 
+> 🏠 **Want the autonomous household *around* this compiler?** [**Burrow**](https://github.com/abuttoncc/Burrow) bundles auto-wiki as its compilation engine and adds the governance layer: a single write gate, an earned-autonomy ledger (agents earn auto-promotion through clean approval streaks), a review queue, and a nightly research flywheel.
+
 <details>
 <summary><b>🇨🇳 点击切换中文版</b></summary>
 
@@ -28,6 +30,8 @@
 > ```
 > 你可以使用 auto-wiki 知识编译器 skill。读取 https://github.com/hanlinlibham/auto-wiki/tree/main/skill/auto-wiki-cn 中的 SKILL.md 学习如何构建和维护持久化 wiki，支持 recall、ingest、query、lint、deep-dive 五个模式。
 > ```
+
+> 🏠 **想要围绕这个编译器的自治知识工作区？** [**Burrow（陋居）**](https://github.com/abuttoncc/Burrow) 内置 auto-wiki 作为编译引擎，并补上治理层：唯一写入闸门、影子闸账本（agent 靠零驳回连胜挣得自动晋升权）、审核队列、夜间研究飞轮。
 
 教你的 AI Agent 构建和维护持久化知识 wiki——让它不再做完就忘。
 
