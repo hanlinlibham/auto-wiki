@@ -1,36 +1,43 @@
 # FIBO MCP: Runtime Logic Validator
 
-> External validator, validates wiki knowledge logic structure via SPARQL queries to FIBO ontology (627K inferred triples).
-> Optional enhancement—falls back to schema.py format validation + seed static rules when unreachable.
+> External validator that checks the logical structure of wiki knowledge via SPARQL queries against the FIBO ontology (627K inferred triples).
+> Optional enhancement — when unreachable, lint degrades to schema.py format validation + static seed rules.
 >
 > Based on [NeuroFusionAI/fibo-mcp](https://github.com/NeuroFusionAI/fibo-mcp) (MIT), which materializes the FIBO ontology into a queryable MCP SPARQL endpoint.
 
-## Service Information
+## Service Info
 
 | Item | Value |
-|------|-------|
-| Endpoint | `https://mcp.ablemind.cc/fibomcp/mcp` |
-| Protocol | MCP Streamable HTTP (requires `Mcp-Session-Id`), HTTPS via Cloudflare |
-| Tools | Only `sparql` (no search) |
-| Data Scale | 627,712 triples (includes OWL-RL inference materialization) |
+|----|-----|
+| Endpoint (registered as `fibo-mcp` in the project-level `.mcp.json`) | `http://39.96.218.64:8113/mcp` ← currently available |
+| Backup mirror | `https://mcp.ablemind.cc/fibomcp/mcp` (Cloudflare; origin returned 522, unreachable as tested 2026-06) |
+| Protocol | MCP Streamable HTTP (`initialize` automatically obtains `Mcp-Session-Id`) |
+| Service version | FIBO 3.3.1 |
+| Tools | `sparql` (SPARQL queries), `inspect` (class/property details) |
+| Data size | 627,712 triples (including OWL-RL inference materialization) |
 
-## Calling Method
+> **Coverage (tested 2026-06)**: FIBO covers financial entities / securities / interest rates / legal entities / pensions, etc. For the domains in this repo:
+> - **macro domain = partial coverage**: central bank / government bond / interest rate / repurchase agreement are covered; monetary policy / lending facility (MLF/SLF) / interest rate corridor are not (central-bank operating tools are not in FIBO).
+> - **annuity domain = high coverage**: trustee / custodian / pension fund / fund manager — FIBO's home turf, see `seeds/fibo-pensions.md`.
+> Therefore FIBO validation **only checks the permanent skeleton (T3 entities/relations, T5 types)**, never the time-varying layers (T0 values / T1 states / T2 logic / T4 events).
 
-Send `tools/call` request via MCP protocol, tool name = `sparql`, parameter is SPARQL query string.
-Need to `initialize` first to get `Mcp-Session-Id`, subsequent requests include that header.
+## How to Call
 
-> **No user credentials needed**: `Mcp-Session-Id` is a standard session identifier for MCP Streamable HTTP transport (similar to HTTP Session), automatically obtained by the agent during `initialize`. No API key or secrets required from the user. The endpoint is a public read-only SPARQL query service.
+Send a `tools/call` request over the MCP protocol with tool name = `sparql` and the SPARQL query string as the argument.
+First `initialize` to obtain an `Mcp-Session-Id`, then attach that header to subsequent requests.
 
-## Three Validation Levels
+> **No user credentials needed**: `Mcp-Session-Id` is the standard session identifier of the MCP Streamable HTTP transport (similar to an HTTP session). The Agent obtains it automatically by calling `initialize`; no API key or other secret is required from the user. The endpoint is a public read-only SPARQL query service.
 
-schema.py validates page format (frontmatter field presence, type correctness).
-FIBO SPARQL validates knowledge logic—three levels:
+## Three Levels of Validation
 
-### 1. Logic Pathway: Domain/Range of Relations
+schema.py validates page format (are frontmatter fields present, are types correct).
+FIBO SPARQL validates knowledge logic — at three levels:
 
-Agent wrote a relation, is this relation valid in standard ontology?
+### 1. Logical pathway: is a relation's domain/range legal?
 
-**Query template**: Given a property name, query its domain and range.
+The Agent wrote a relation — is that relation legal in the standard ontology?
+
+**Query template**: given a property name, look up its domain and range.
 
 ```sparql
 SELECT DISTINCT ?domainLabel ?rangeLabel WHERE {
@@ -41,7 +48,7 @@ SELECT DISTINCT ?domainLabel ?rangeLabel WHERE {
 }
 ```
 
-**Example** (using `has trustee` as example, verified 2026-04-07):
+**Example** (using `has trustee`, verified 2026-04-07):
 
 | domain | range |
 |--------|-------|
@@ -49,13 +56,13 @@ SELECT DISTINCT ?domainLabel ?rangeLabel WHERE {
 | trust | trustee |
 | trust | controlling party |
 
--> If Agent writes `PensionProduct --hasTrustee--> X`, logic pathway invalid: PensionProduct not in domain.
+-> If the Agent writes `PensionProduct --hasTrustee--> X`, the logical pathway is illegal: PensionProduct is not in the domain.
 
-### 2. Conditional Edges: Required Relations for Entities
+### 2. Conditional edges: relations required for an entity to hold
 
-Agent created an entity page, what required relations are needed?
+The Agent created an entity page — which relations are mandatory?
 
-**Query template**: Given a class URI, query its OWL constraints.
+**Query template**: given a class URI, look up its OWL restrictions.
 
 ```sparql
 SELECT DISTINCT ?onPropLabel ?restrictType ?valueLabel WHERE {
@@ -71,13 +78,13 @@ SELECT DISTINCT ?onPropLabel ?restrictType ?valueLabel WHERE {
 ```
 
 `someValuesFrom` = entities of this class **must** have this relation (at least one).
-`allValuesFrom` = values of this relation **can only** be specified type.
+`allValuesFrom` = the relation's values **can only** be of the specified type.
 
-### 3. Type Hierarchy: Entity Classification Correctness
+### 3. Type hierarchy: is the entity classified correctly?
 
-Agent marked entity as a type, does standard ontology have it?
+The Agent tagged an entity with some type — does it exist in the standard ontology?
 
-**Query template**: Fuzzy search class name.
+**Query template**: fuzzy-search class names.
 
 ```sparql
 SELECT DISTINCT ?label ?def WHERE {
@@ -87,24 +94,24 @@ SELECT DISTINCT ?label ?def WHERE {
 }
 ```
 
-If not found, validator should prompt: "This type not in standard ontology, please confirm naming".
+If nothing is found, validation should prompt: "This type is not in the standard ontology; please double-check the naming."
 
-## Integration Method
+## Integration
 
-Doesn't change Skill core flow, as optional enhancement layer for lint:
+Does not change the Skill's core flow; acts as an optional enhancement layer of lint:
 
 ```
 lint → schema.py format validation
-     → External validator (if meta.yaml declared validator and reachable)
-       ├─ Logic pathway: relation type domain/range match
-       ├─ Conditional edges: required relations (someValuesFrom) missing
-       └─ Type hierarchy: entity type in standard ontology
-     → Health report
+     → external validator (if meta.yaml declares a validator and it is reachable)
+       ├─ Logical pathway: does the relation type's domain/range match
+       ├─ Conditional edges: are required relations (someValuesFrom) missing
+       └─ Type hierarchy: is the entity type in the standard ontology
+     → health report
 ```
 
 ## Principles
 
-- Don't hardcode FIBO constraints into schema.py—external reference, not internal rule
-- Don't require wiki pages satisfy all OWL constraints—report missing, Agent judges whether to supplement
-- Don't block ingest—logic validation only runs during lint, ingest prioritizes speed
-- Skip silently when service unreachable—note "external validator unreachable, skipped" in health report
+- Never hard-code FIBO constraints into schema.py — it is an external reference, not an internal rule
+- Never require wiki pages to satisfy every OWL constraint — just report what is missing; the Agent decides whether to fill it in
+- Never block at ingest time — logic validation runs only at lint; ingest prioritizes speed
+- Skip silently when the service is unreachable — note in the health report that "external validator unreachable, skipped"

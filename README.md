@@ -285,7 +285,7 @@ This project builds on ideas and inspiration from:
 | Version | Directory | Description |
 |---------|-----------|-------------|
 | Chinese | `skill/auto-wiki-cn/` | **v0.3.0** — domain-based layout, six-tier time model, per-domain ontology contracts. |
-| English | `skill/auto-wiki-en/` | v0.2.0 — pending re-translation of the v0.3 protocols. |
+| English | `skill/auto-wiki-en/` | **v0.3.0** — fully localized: English type directories, natural-language slugs, English triggers. |
 
 Each version is fully self-contained — copy one directory and it works standalone.
 

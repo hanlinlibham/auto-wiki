@@ -1,205 +1,438 @@
 # Storage Specification
 
+> This file is the storage specification of the auto-wiki **engine**, and is domain-agnostic. Every example below drawn from the macro domain (central bank, 7-day reverse repo, interest rate corridor, ...) is merely a concrete instance of some domain's ontology contract `wiki/{domain}/_ontology.md`; switch to another domain and the directory skeleton and table structures stay the same — only the node content differs.
+>
+> **The authoritative source of truth is each domain's `_ontology.md` (the ontology contract).** This spec only answers "where does a thing land on disk, and in what structure"; "whether a piece of knowledge is an entity / concept / event / value / relation, how fast it changes, and what happens when it gets overturned" is defined by the contract. When the two conflict, the contract wins.
+
+---
+
 ## Wiki Root Directory
 
-All wikis are stored in `.wiki/` directory under working directory:
+All wikis are stored in the `wiki/` directory under the working directory. **Wikis are organized by domain, not by research topic.** Each first-level subdirectory = one domain (e.g. macro, credit, equity strategy), not one report or one special study.
 
 ```
 {project_root}/
-└── .wiki/
-    ├── enterprise-annuity/      # One directory per research topic
-    ├── charlie-munger/
-    └── public-fund/
+└── wiki/
+    ├── macro/                  # One directory per domain (macro)
+    ├── credit/                 # Credit
+    └── equity-strategy/        # Equity strategy
 ```
 
-**Location Selection Logic** (by priority):
-1. If current directory has `.wiki/` → Use it
-2. If current directory has `.claude/` → Create `.wiki/` at same level
-3. If current directory is git repo root → Create `.wiki/` at root
-4. Otherwise → Create `.wiki/` in current directory
+> **Domain ≠ research topic.** Research topics like "the Fed hiking cycle and asset allocation" or "the enterprise annuity market landscape" are **demoted to a single page under `{domain}/analyses/`** (a derived view); they no longer get their own top-level directory. All topics within a domain share one set of entities / concepts / events / indicators — deduplicated and cross-linked across topics — so knowledge accumulates instead of shattering into islands.
 
-**Relationship with .gitignore**: Recommend adding `.wiki/` to `.gitignore` (wiki is personal knowledge base, shouldn't be committed with project code). If user wants version control, can `git init` separately inside `.wiki/`.
+**Location selection logic** (by priority):
+1. If the current directory has `wiki/` → use it
+2. If the current directory has `.claude/` → create `wiki/` as a sibling
+3. If the current directory is a git repo root → create `wiki/` at the root
+4. Otherwise → create `wiki/` in the current directory
 
-### Obsidian Compatibility
+**Relationship with .gitignore**: do **not** add `wiki/` to `.gitignore` — it is the knowledge ontology itself; it must appear in the Obsidian graph and be version-controlled in git together with the vault. **Never use `.wiki/` (a dot-prefixed directory)**: Obsidian hides directories starting with `.`, and a dotfolder never enters the graph. Always use the visible `wiki/`.
 
-`.wiki/` directory can be directly opened as Obsidian vault (`Open folder as vault`):
+> Exception: `wiki/.obsidian/` (Obsidian's own configuration) is the only dot directory allowed — it is Obsidian's conventional config location and does not affect knowledge nodes in the graph; everything else that is knowledge content (institutions / concepts / events / analyses / sources / `data.db`) must live under visible directories.
 
-- `[[slug]]` / `[[slug|display]]` → Obsidian Graph View auto-renders topology
-- YAML frontmatter → Obsidian Properties panel, can filter by confidence, type, etc.
-- `sources/`, `entities/`, `concepts/` directories → Obsidian folder view
+---
 
-**On first `.wiki/` creation**, Agent should initialize `.obsidian/` config directory with graph coloring enabled:
+## Directory Structure of a Single Domain Wiki (type is directory, directory is graph coloring)
 
-```
-.wiki/.obsidian/
-├── graph.json       # Graph color scheme (grouped by path and tag)
-├── app.json         # {}
-├── appearance.json  # {}
-└── core-plugins.json # Enable graph, backlink, properties, tag-pane
-```
-
-`graph.json` presets 5 color groups:
-
-| Group Rule | Color | Description |
-|-----------|-------|-------------|
-| `path:sources/` | Blue-gray | Source files |
-| `path:entities/` | Cyan-green | Entities |
-| `path:concepts/` | Emerald | Concepts |
-| `path:analyses/` | Purple | Analyses |
-| `[confidence:contested]` | Red | Contested nodes (Obsidian Properties syntax matching frontmatter) |
-
-Also sets:
-- `showTags: false` (hide tag nodes from graph — coloring uses `path:` and Properties queries; tags are for search/filter only)
-- `showArrow: true` (show relationship direction)
-- `textFadeMultiplier: -1.5` (show node labels by default)
-- `search: "-path:index -path:log"` (exclude index and log meta files)
-
-If need to exclude `_report.html` and other generated files, add `_*` to Obsidian Settings → Files & Links → Excluded files.
-
-### Visualization Reports
-
-Run `python schema.py --report .wiki/{topic}/` to generate `_report.html`, open in browser to view:
-
-- Statistics panel: page count, type distribution, contested count
-- Interactive relationship graph: vis-network.js rendering, draggable, zoomable
-- Data table: All structured data points (value + unit + period + confidence)
-- Freshness: Sorted by update date
-- Coverage Gaps: Orphan pages, missing pages
-
-## Single Wiki Directory Structure
+Inside each domain directory, **subdirectories are split by node type**; the subdirectory names are the English node-type names directly (= node type = Obsidian graph coloring key). The legacy four-directory layout (`entities/ concepts/ sources/ analyses/`) is retired, and directories are never split by research topic.
 
 ```
-.wiki/{topic_name}/
-├── data.db                  # Structured data (SQLite, managed by store.py)
-├── meta.yaml                # Wiki metadata (ontology type, creation time, description)
-├── index.md                 # Page index (Agent auto-maintained)
-├── log.md                   # Operation log (append-only)
-├── _report.html             # Visualization report (schema.py --report generates)
-├── sources/                 # Source file summary pages (immutable)
-│   ├── 2026-04-06-policy-doc.md
-│   └── 2026-04-03-annual-report.md
-├── entities/                # Entity pages (narrative analysis)
-│   ├── alpha-corp.md
-│   └── regulatory-agency.md
-├── concepts/                # Concept pages
-│   ├── fiduciary-responsibility.md
-│   └── portable-annuity.md
-└── analyses/                # Analysis archive pages (query outputs)
-    └── market-comparison.md
+wiki/{domain}/                         # e.g. wiki/macro/
+├── _ontology.md                       # This domain's ontology contract (humans and Agents read it before ingest/recall)
+├── {Domain}.md                        # Hub / MOC, graph navigation center (named after the domain, e.g. Macro.md)
+├── log.md                             # ingest operation log (append-only)
+├── data.db                            # Sole structured source of truth: values, states, events, relations (SQLite, managed by store.py)
+├── _report.html                       # Visualization report (generated by schema.py --report, optional)
+│
+├── institutions/   …                  # Entity · institution (named actors)                          Graph color: red (center)
+├── instruments/    …                  # Entity · instrument (policy tools created and run by an institution)  Graph color: blue
+├── indicators/     …                  # Entity · indicator (named time series that can be re-queried)          Graph color: cyan
+├── mechanisms/     …                  # Concept · mechanism (machinery only understandable via an intensional definition)  Graph color: green
+├── events/         …                  # Event (has a date + an actor; once it happens it is fixed)             Graph color: yellow
+├── analyses/       …                  # Analysis (research judgments / research-topic pages built on the nodes above)  Graph color: gray
+└── sources/        …                  # Source (the carrier page of one report/article original)               Graph color: light gray
 ```
 
-### Data Layering Principle
+A concrete instantiation for the macro domain:
 
-| Layer | Carrier | Stores What | Why |
-|-------|---------|-------------|-----|
-| **Narrative** | Markdown pages | Analysis, context, wikilink | Human reading, Obsidian browsing |
-| **Data** | data.db (SQLite) | Values, time series, relations, history | Aggregate queries, cross-page comparison, timeline |
-| **Metadata** | YAML frontmatter | title, type, created, updated, sources, confidence | Page identity |
+```
+wiki/macro/
+├── _ontology.md
+├── Macro.md
+├── log.md
+├── data.db
+├── institutions/   People's Bank of China.md  Federal Reserve.md
+├── instruments/    7-day reverse repo.md  MLF.md  SLF.md  RRR cut.md  treasury bond trading.md  PSL.md
+├── indicators/     7-day reverse repo rate.md  LPR.md  M2.md  DR007.md  10Y treasury yield.md
+├── mechanisms/     interest rate corridor.md  interest rate transmission mechanism.md  monetary policy toolkit.md
+├── events/         2025-03-MLF-reform.md  2024-10-outright-reverse-repo-launch.md
+├── analyses/       Central Bank Toolkit Panorama.md  Fed Hikes and Major Asset Classes.md
+└── sources/        2026-05-25-broker-fixed-income-report.md
+```
 
-**Frontmatter no longer stores `data` and `history` fields.** All structured data written to `data.db`.
-Frontmatter only keeps: `title`, `type`, `created`, `updated`, `sources`, `confidence`.
-`relations` kept in frontmatter (Obsidian wikilink rendering needs it), also written to `data.db` (query needs it).
+### Node Type → Subdirectory Mapping
+
+The engine recognizes these 7 node types, one subdirectory each. Which noun lands in which type is adjudicated by the contract's "classification decision tree"; this table only gives the mapping and does not restate the criteria.
+
+| Node type | Subdirectory | One-liner (detailed criteria in contract §1) | Graph color | `pages.type` |
+|---|---|---|---|---|
+| Entity · institution | `institutions/` | A named actor | Red (center) | `entity` (subtype=institution) |
+| Entity · instrument | `instruments/` | A policy tool created and run by some institution | Blue | `entity` (subtype=instrument) |
+| Entity · indicator | `indicators/` | A **named time series** that can be re-queried (its identity is the series, not any single day's value) | Cyan | `entity` (subtype=indicator) |
+| Concept · mechanism | `mechanisms/` | Machinery/framework only understandable via an intensional definition | Green | `concept` |
+| Event | `events/` | Has a definite date + an actor; happens once and never again | Yellow | `event` |
+| Analysis | `analyses/` | Research judgments built on the nodes above (= derived view; deleting it does not harm the ontology); research topics land here | Gray | `analysis` |
+| Source | `sources/` | The carrier page of one report/article original; every assertion is traceable to it | Light gray | `source` |
+
+> **Two hard no-page rules (from contract §0):**
+> - **A value is never a node.** `7-day reverse repo rate = 1.40%` gets no page; it goes into `data_points` in `data.db`. The graph contains only the "7-day reverse repo rate" series page, never a "1.40%" point.
+> - **A classification label is not a node and gets no page.** Classification dimensions like quantity-based / price-based / structural are multi-dimensional labels attached to instruments, recorded as `classified_as` **edges** (written into `relations`); the graph buckets and colors by them, but the label itself has no page.
+
+**Color discipline**: the Obsidian graph colors by subdirectory rules such as `path:institutions/`. There are 7 top-level node types, but the three entity types (institutions / instruments / indicators) can be viewed as one red/blue/cyan family; **keep the color groups in graph.json to ≤ 6–7** (any more and the eye cannot tell them apart). Do **not** put a trailing `path:wiki` catch-all gray rule in `graph.json`, or it will override all the per-subdirectory coloring.
+
+**Naming discipline**: **a single English slug = filename = `[[wikilink]]` = `data.db` primary key**. Do not invent a second machine-style id (snake_case / PascalCase codes) — that creates a parallel naming scheme that fights Obsidian's filename-based links. Deduplication across reports and topics relies on the page frontmatter `aliases:` field (e.g. `OMO = 7-day reverse repo`, `MDS = outright reverse repo`, "restarted/resumed" treasury bond trading).
+
+---
+
+### Data Layering Principles
+
+| Layer | Carrier | What it stores | Why |
+|----|------|--------|--------|
+| **Narrative layer** | Markdown pages | Analysis, context, wikilinks, mechanism prose, retirement callouts | Human reading, Obsidian browsing |
+| **Data layer** | `data.db` (SQLite) | T0 values, T1 states, T2 logic, T4 events, relations (all temporal) | Aggregate queries, cross-page comparison, timelines, retirement backtracking |
+| **Metadata layer** | YAML frontmatter | `title`, `type`, `subtype`, `created`, `updated`, `aliases`, `sources`, `confidence`, `relations` (mechanism pages also have `durability`/`preconditions`/`falsifiable_by`; event pages also have `event_date`/`actor`/`retires`/`sets`) | Page identity, Obsidian Properties filtering |
+
+**Frontmatter never stores `data` or `history` fields.** All structured data goes into `data.db`. `relations` stays in frontmatter (needed for Obsidian wikilink rendering) and is also written into `data.db` (needed for queries/validation); the two must agree.
+
+---
+
+## data.db Target Schema (v2)
+
+`data.db` is the domain's sole structured source of truth. The schema below is the **contract** the `store.py` refactor must align to (same as `_ontology.md` §7); the engine creates tables from it. Core idea: **a three-way split of nodes / data / edges, with the data itself carrying two time axes — "when it was true" and "when I recorded it"**.
+
+```sql
+-- Page identity table: one row per wiki node (values and classification labels are not in this table)
+CREATE TABLE pages (
+    slug        TEXT PRIMARY KEY,          -- English slug = filename = wikilink = primary key
+    title       TEXT NOT NULL,
+    type        TEXT NOT NULL
+        CHECK(type IN ('source','entity','concept','event','analysis')),  -- v2 adds 'event'
+    subtype     TEXT                       -- entity only: institution|instrument|indicator
+        CHECK(subtype IS NULL OR subtype IN ('institution','instrument','indicator')),
+    confidence  TEXT NOT NULL DEFAULT 'medium'
+        CHECK(confidence IN ('high','medium','low','contested')),
+    created     TEXT NOT NULL,
+    updated     TEXT NOT NULL
+);
+
+-- T0 observations: one measurement of an indicator at a point in time; the value is a number, one row per period
+CREATE TABLE data_points (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    page_slug     TEXT NOT NULL REFERENCES pages(slug),
+    field         TEXT NOT NULL,
+    value         REAL NOT NULL,
+    unit          TEXT NOT NULL,
+    period        TEXT NOT NULL,           -- valid-time: which point/period in the world this value belongs to
+    recorded_at   TEXT NOT NULL,           -- transaction-time: when, and from which report, I recorded it   [new in v2]
+    source_slug   TEXT NOT NULL,           -- source page slug                                                [new/required in v2]
+    supersedes_id INTEGER,                 -- when a newer report corrects the same period, points to the superseded old row
+    scope         TEXT,
+    confidence    TEXT DEFAULT 'high'
+        CHECK(confidence IN ('high','medium','low','contested'))
+    -- Same-period correction by a newer report: keep both rows + distinguish via recorded_at/supersedes_id; never stuff into a history table
+);
+
+-- T1 states + T2 durable logic: a zipper table. object is text/slug (a non-numeric proposition), switched by events   [new table in v2]
+CREATE TABLE facts (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    page_slug      TEXT NOT NULL REFERENCES pages(slug),
+    predicate      TEXT NOT NULL,          -- predicate, e.g. "policy rate anchor is"
+    object_text    TEXT,                   -- text object
+    object_slug    TEXT,                   -- or a slug pointing to another node
+    valid_from     TEXT NOT NULL,          -- valid-time start: when it became true in the world
+    valid_to       TEXT NOT NULL DEFAULT '9999-12-31',  -- valid-time end: 9999 = still valid
+    is_current     INTEGER NOT NULL DEFAULT 1,           -- 1 = current state, 0 = retired
+    recorded_at    TEXT NOT NULL,          -- transaction-time start: when I recorded this row
+    recorded_until TEXT NOT NULL DEFAULT '9999-12-31',   -- transaction-time end: sealed on errata
+    confidence     TEXT DEFAULT 'medium'
+        CHECK(confidence IN ('high','medium','low','contested')),
+    source_slug    TEXT NOT NULL,
+    supersedes_id  INTEGER,                -- points to the old facts row superseded by this row
+    caused_by_event TEXT                   -- points to the stamping T4 event slug (events.slug)
+);
+
+-- T4 events: append-only, the stamper of every T1/T2 switch. Insert only, never modify                       [new table in v2]
+CREATE TABLE events (
+    slug        TEXT PRIMARY KEY,          -- event page slug, e.g. 2025-03-MLF-reform
+    event_date  TEXT NOT NULL,             -- date of occurrence (or a proxy stub date, see contract §9)
+    actor_slug  TEXT,                      -- actor (institution slug)
+    description TEXT,
+    source_slug TEXT NOT NULL,
+    recorded_at TEXT NOT NULL
+    -- The event's retires[] / sets{} live in the event page frontmatter, linked via facts.caused_by_event
+);
+
+-- T3 relations (edges from the controlled vocabulary) + temporal columns: near-permanent edges leave valid_to at 9999, never hard-deleted   [v2 adds temporality]
+CREATE TABLE relations (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    from_slug         TEXT NOT NULL,
+    to_slug           TEXT NOT NULL,
+    type              TEXT NOT NULL,       -- controlled vocabulary (see contract §3); lint rejects out-of-vocabulary edges
+    bound_role        TEXT,                -- bounds edges only: upper|lower|center
+    valid_from        TEXT,                                   -- [new in v2]
+    valid_to          TEXT NOT NULL DEFAULT '9999-12-31',     -- [new in v2]
+    recorded_at       TEXT,                                   -- [new in v2]
+    retract_event_slug TEXT,              -- when an edge is retracted by some event, points to that event   [new in v2]
+    UNIQUE(from_slug, to_slug, type)
+);
+
+-- Indexes
+CREATE INDEX idx_dp_page    ON data_points(page_slug);
+CREATE INDEX idx_dp_field   ON data_points(field);
+CREATE INDEX idx_dp_period  ON data_points(period);
+CREATE INDEX idx_facts_page ON facts(page_slug);
+CREATE INDEX idx_facts_cur  ON facts(is_current);
+CREATE INDEX idx_events_date ON events(event_date);
+CREATE INDEX idx_rel_from   ON relations(from_slug);
+CREATE INDEX idx_rel_to     ON relations(to_slug);
+CREATE INDEX idx_rel_type   ON relations(type);
+```
+
+> **Key changes when migrating from v1 (for readers of the old store.py):**
+> - The CHECK on `pages.type` changes from `(source/entity/concept/analysis/mental-model)` to `(source/entity/concept/event/analysis)` — **`event` added, `mental-model` removed** (mental model as a standalone type is folded into `concept`/mechanism in domain wikis). An optional `subtype` is added to distinguish institution / instrument / indicator.
+> - `data_points` **gains `recorded_at`, `source_slug` (required), and `supersedes_id`**; same-period corrections no longer go through the old `history` table but instead "keep both rows + distinguish via recorded_at".
+> - **The old `history` table is retired**, replaced by two tables with clearer responsibilities: `facts` (the retirement zipper for T1 states / T2 logic) + `events` (T4 stamping).
+> - `relations` **gains `bound_role` and four temporal columns** (valid_from/valid_to/recorded_at/retract_event_slug).
+
+### Six-Tier Time Model → Table Mapping
+
+Which kind of knowledge goes into which table is decided by the 6-tier time model in contract §4. The engine routes accordingly:
+
+| Tier | What it is | Where it lands | One-line recording method |
+|---|---|---|---|
+| **T0** observation | One measurement of an indicator at a point in time (the value is a number) | `data_points` | One row per period; same-period corrections keep both rows, distinguished by recorded_at |
+| **T1** state / regime | A proposition that holds for a span of time and is switched in one stroke by an event | `facts` (zipper) | A change = seal old row's valid_to + insert new row, attach caused_by_event |
+| **T2** durable logic | Cross-cycle causal chains / definitions (falsifiable) | Mechanism page body + `facts` (with confidence/durability) | When falsified, goes through the same retirement zipper |
+| **T3** entities / near-permanent relations | Objectively existing things and their essential affiliations | Entity pages + `relations` (temporal) | Near-permanent edges leave valid_to at 9999 |
+| **T4** events | Has a date + an actor; fixed once it happens | `events` table + event page | Append-only, insert and never modify |
+| **T5** type axioms | Constraints on "what other knowledge looks like" | `_ontology.md` + table CHECK constraints | Not data rows; goes into the schema |
+
+> **Key adjudication (contract §4):** "the current policy rate = 7-day reverse repo" is a **T1 state** (goes into `facts`; the object is text, switched by events); "7-day reverse repo rate = 1.40%" is a **T0 measurement** (goes into `data_points`; the value is a number, one row per month). Two different kinds of thing, which must be recorded differently — this is exactly why `facts` and `data_points` are two separate tables.
+
+### Three Iron Laws of Recording (why this table structure)
+
+The table structure exists to make the three iron laws of contract §5 executable:
+
+1. **Retire, never delete**: only same-period T0 corrections may overwrite; once you cross into T1/T2/T3, every "change" is "seal the old row's `valid_to` / set `is_current=0` + insert a new row" — **never DELETE**. This requires every mutable table to carry `valid_from/valid_to` (+ `is_current`/`supersedes_id`).
+2. **Bitemporal axes kept apart**: every assertion has two time axes — `valid_from/valid_to` (when it was true in the world) + `recorded_at` (which report of mine recorded it). **Changing `valid_from` = the world changed; only changing `recorded_at` / sealing `recorded_until` = my own erratum.** The two must never be conflated, which is why every table has both column groups.
+3. **Event stamping**: every change to a T1/T2 current state must trace back to a T4 event — `facts.caused_by_event` points to `events.slug`, and `relations.retract_event_slug` points to the event that retracted the edge.
+
+> The full worked example of the six-step retirement protocol (write event page → stamp the old row's valid columns → wire the causal pointer → insert the successor row → add a retirement callout at the page layer) lives in contract §6. The engine only needs to guarantee the columns above exist, and that sealing touches only the three columns `valid_to`/`is_current`/`recorded_until`.
 
 ### data.db Initialization
 
-When wiki is created, Agent runs `python store.py init .wiki/{topic}/` to initialize database.
-Table structure see `store.py`, includes: `pages`, `data_points`, `history`, `relations`.
+When a domain wiki is created, the Agent runs `python store.py init wiki/{domain}/` to initialize the database. The table structure follows the v2 schema in this section (`store.py` implements / refactors to it), including: `pages`, `data_points`, `facts`, `events`, `relations`.
 
-## meta.yaml
+> **Infrastructure discipline (contract §7):** everything stays inside the existing SQLite — **no external time-series database is introduced**. The user's volume is a few thousand rows; what is missing is the bitemporal zipper table structure, not a new product. Bulk market data goes through data MCPs like juzi/ablemind and never enters the wiki.
 
-Each wiki's metadata, written at creation, updated during lint:
+---
 
-```yaml
-name: my-research-topic
-ontology_type: domain           # domain | cognitive | general
-description: Research topic description
-seed: fibo-pensions             # Optional, references seed filename under seeds/
-created: 2026-04-06
-last_ingest: 2026-04-06
-stats:
-  sources: 3
-  entities: 8
-  concepts: 5
-  analyses: 1
-  total_pages: 17
-  contested_count: 1
+## Obsidian Compatibility
+
+The `wiki/` directory (and each domain directory under it) can be opened directly as an Obsidian vault (`Open folder as vault`):
+
+- `[[slug]]` / `[[slug|display]]` → Obsidian Graph View auto-renders the topology (the slug is the English filename, directly readable)
+- YAML frontmatter → Obsidian Properties panel; filter by `confidence`, `type`, `subtype`, `is_current`, etc.
+- The `institutions/`, `instruments/`, `indicators/`, `mechanisms/`, `events/`, `analyses/`, `sources/` subdirectories → Obsidian folder view
+
+> **No alias layer of "English directories + native-language Folder Notes" is needed anymore.** The v2 subdirectory names themselves are plain English words (institutions/instruments/indicators/mechanisms/events/analyses/sources); the Obsidian folder view shows their meaning directly, with no folder note needed to bridge a "directory name vs. display name" gap. To attach a navigation blurb to a subdirectory, you may add a same-named folder note (e.g. `institutions/institutions.md`) with the Folder notes plugin enabled — but that is optional, not a required alias mechanism.
+
+**When creating a domain wiki for the first time**, the Agent should initialize the `.obsidian/` config directory (note: this is Obsidian's conventional config directory, the only dot directory allowed, and holds no knowledge nodes) and enable graph coloring:
+
+```
+wiki/.obsidian/             # or wiki/{domain}/.obsidian/, depending on which level is the vault root
+├── graph.json       # Graph color scheme (grouped by path subdirectories and Properties)
+├── app.json         # {}
+├── appearance.json  # {}
+└── core-plugins.json # Enable graph, backlink, properties, tag-pane (folder-note optional)
 ```
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| name | Yes | Wiki directory name |
-| ontology_type | Yes | domain / cognitive / general |
-| description | Yes | One-sentence description of research topic |
-| seed | No | Seed configuration name, corresponds to `seeds/{name}.md`. Omit for no seed, wiki grows freely |
-| created | Yes | Creation date |
-| last_ingest | Yes | Last ingest date (Agent updates) |
-| stats | Yes | Page statistics (Agent / lint updates) |
+`graph.json` presets color groups by **node-type subdirectory** (aligned with the graph colors in contract §2; the three entity types share one warm-color family, keeping total colors ≤ 7):
+
+| Group rule | Color | Description |
+|---------|------|------|
+| `path:institutions/` | Red | Entity · institution (center) |
+| `path:instruments/` | Blue | Entity · instrument |
+| `path:indicators/` | Cyan | Entity · indicator |
+| `path:mechanisms/` | Green | Concept · mechanism |
+| `path:events/` | Yellow | Event |
+| `path:analyses/` | Gray | Analysis / research topic |
+| `path:sources/` | Light gray | Source |
+| `[confidence:contested]` | Red outline | Contested nodes (Obsidian Properties syntax matching frontmatter) |
+
+> **Never** put a catch-all gray rule like `path:wiki` at the end of `graph.json` — it would override all the per-subdirectory coloring above. And do not cram in 9+ colors (the eye cannot distinguish them).
+
+Also set:
+- `showTags: false` (do not show tag nodes in the graph — coloring relies on `path:` and Properties queries; tags are for search filtering only)
+- `showArrow: true` (show relation direction; edges from the controlled vocabulary are directed)
+- `textFadeMultiplier: -1.5` (show node labels by default)
+- `search: "-path:log -path:_ontology"` (exclude the log, the contract, and other meta files so the graph shows knowledge nodes only)
+
+If you need to exclude generated files like `_report.html`, add `_*` under Obsidian Settings → Files & Links → Excluded files.
+
+### Visualization Report
+
+Run `python schema.py --report wiki/{domain}/` to generate `_report.html`, viewable in a browser:
+
+- Stats panel: page count, distribution by type (institutions/instruments/indicators/mechanisms/events/analyses/sources), contested count
+- Interactive relation graph: vis-network.js renders the controlled-vocabulary edges; draggable, zoomable
+- Data tables: `data_points` (value + unit + period + recorded_at + confidence)
+- State zipper: current and retired rows of `facts` (valid_from/valid_to/caused_by_event)
+- Freshness: sorted by `updated` / `recorded_at`
+- Coverage gaps: orphan pages, missing pages, state changes lacking an event stamp
+
+---
 
 ## Initialization Templates
 
-### index.md Created for New Wiki
+### Subdirectories created when a new domain wiki is set up
+
+Create the 7 node-type subdirectories (`institutions/ instruments/ indicators/ mechanisms/ events/ analyses/ sources/`). Subdirectories may be created lazily (only when the first node of that type appears) or all at once; the names are fixed and do not vary by domain.
+
+### Hub page created when a new domain wiki is set up
+
+The Hub page is named after the **domain name** (e.g. `Macro.md`), not `index.md`.
+
+Reason: Obsidian graph nodes display the filename; if every domain used `index`, they would be indistinguishable — and the hub would lose its navigation role as the central node (MOC).
 
 ```markdown
-# {topic_name} Wiki Index
+# {Domain name} · Hub
 
-> 0 pages | Created: {date} | Type: {ontology_type}
+> 0 pages | Created: {date} | Domain: {domain}
+> Ontology contract: see [[_ontology]]
 
-## Sources (0)
+## Institutions (0)
 
-## Entities (0)
+## Instruments (0)
 
-## Concepts (0)
+## Indicators (0)
+
+## Mechanisms (0)
+
+## Events (0)
 
 ## Analyses (0)
+
+## Sources (0)
 ```
 
-### log.md Created for New Wiki
+### log.md created when a new domain wiki is set up
 
 ```markdown
-# {topic_name} Wiki Log
+# {Domain name} Wiki Log
 
 ## {date} — init
-- Created wiki: {topic_name}
-- Ontology type: {ontology_type}
+- Created domain wiki: {domain}
+- Ontology contract: _ontology.md
 - Description: {description}
 ```
 
+> **`_ontology.md` is a first-class citizen of the domain wiki.** Every domain directory has its own ontology contract; it is not an empty shell auto-generated from a template, but the authoritative document humans and Agents must read before ingest/recall. When creating a new domain without a contract, first draft one based on this spec plus the engine's generic ontology, then begin ingesting.
+
+---
+
+## Frontmatter Templates per Page Type
+
+Frontmatter stores only identity and relations, never data (data goes into `data.db`). Templates match the contract appendix:
+
+```yaml
+# Entity (institution / instrument / indicator)
+title: 7-day reverse repo
+type: entity
+subtype: instrument        # institution | instrument | indicator
+created: 2026-06-07
+updated: 2026-06-07
+aliases: [OMO, open market operations, 7-day reverse repo operations]   # cross-report / cross-topic dedup relies on this
+sources: [2026-05-25-broker-fixed-income-report]
+confidence: high
+relations:
+  - {target: People's Bank of China, type: operated_by}
+  - {target: price-based, type: classified_as}      # classification labels are edges, not pages
+tags: [entity, instrument]
+
+# Mechanism (concept)
+title: interest rate corridor
+type: concept
+created: 2026-06-07
+updated: 2026-06-07
+sources: [...]
+confidence: high
+durability: medium          # T2 durability: high/medium/low
+preconditions: [short-end rates are dominated by the central bank]
+falsifiable_by: [corridor framework abandoned in favor of a single policy rate]
+relations:
+  - {target: SLF rate, type: bounds, bound_role: upper}
+  - {target: excess reserve rate, type: bounds, bound_role: lower}
+  - {target: 7-day reverse repo rate, type: bounds, bound_role: center}
+tags: [concept, mechanism]
+
+# Event
+title: 2025-03 MLF American-style auction reform
+type: event
+event_date: 2025-03-01
+actor: People's Bank of China
+created: 2026-06-07
+updated: 2026-06-07
+sources: [...]
+retires: [MLF is the policy rate anchor]            # which T1/T2 assertion this event retired
+sets: {policy rate anchor: 7-day reverse repo}      # which new current state it set
+tags: [event]
+```
+
+---
+
 ## File Size Expectations
 
-| Wiki Scale | Source Files | Total Pages | Disk Usage | Suitable Retrieval |
-|------------|--------------|-------------|------------|-------------------|
-| Small | 1-10 | 5-30 | < 1 MB | grep + read index |
-| Medium | 10-50 | 30-150 | 1-10 MB | grep + read index |
-| Large | 50-200 | 150-500 | 10-50 MB | Needs index upgrade (beyond Skill scope) |
+| Wiki size | Source files | Total pages | Disk usage | Suitable retrieval |
+|-----------|---------|---------|---------|------------|
+| Small | 1-10 | 5-30 | < 1 MB | grep + read hub page |
+| Medium | 10-50 | 30-150 | 1-10 MB | grep + read hub page |
+| Large | 50-200 | 150-500 | 10-50 MB | Needs an upgrade to indexed retrieval (beyond Skill scope) |
 
-**Default mode limit: ~500 pages.** Beyond that, enable SQLite FTS5 index (zero dependencies, Python built-in), supporting BM25 ranking and backlink queries. See `scaling.md` for details.
+**Default-mode ceiling: ~500 pages.** Beyond that, enable the SQLite FTS5 index (zero dependencies, ships with Python), supporting BM25 ranking and backlink queries. See `scaling.md`.
 
-> Beyond that (need vector retrieval / multi-user collaboration), migrate to external platform.
+> Beyond that again (vector retrieval / multi-user collaboration needed), migrate to an external platform.
 
-## Cross-Wiki Operations
+---
 
-`query` defaults to search within single wiki. If user question spans multiple wikis:
+## Cross-Domain Operations
+
+`query` searches within a single domain wiki by default. If the user's question spans multiple domains:
 
 ```
-User: What intersections exist between Munger's investment framework and enterprise annuity domain?
+User: What is the link between monetary policy transmission and credit spreads?
 
 Agent:
-1. Read directory list under .wiki/, identify relevant wikis
-2. Read charlie-munger/index.md and enterprise-annuity/index.md separately
-3. Search relevant pages in both wikis
-4. Synthesize answer, label source by wiki
+1. Read the list of domain directories under wiki/ and identify the relevant domains
+2. Read the Hub pages of macro/ and credit/ respectively (plus each _ontology.md)
+3. Search both domains for relevant nodes (indicators/mechanisms/events)
+4. Synthesize the answer, marking which domain each source belongs to
 ```
 
-## Source File Processing
+> If one research topic spans two domains, its "analysis page" lives under the primary domain's `analyses/` and references the other domain's nodes via `[[wikilink]]`; do **not** open a new top-level directory for it.
 
-Different format source files, processing during ingest:
+---
 
-| Format | Processing | Notes |
-|--------|-----------|-------|
-| Text / Markdown | Read directly | Ideal input format |
+## Source File Handling
+
+How source files of different formats are handled at ingest:
+
+| Format | Handling | Notes |
+|------|---------|------|
+| Text / Markdown | Read directly | The ideal input format |
 | PDF | Read text content (within Agent capability) | Complex layouts may lose structure |
-| Excel / CSV | Read data, extract key metrics | Numeric data written to entity page "Key Data" section |
-| User oral / conversation text | Ingest as text | Label source as "oral", confidence default medium |
-| URL / Webpage | Fetch content with WebFetch, then ingest | Label source URL |
+| Excel / CSV | Read data, extract key indicators | Numeric data goes into `data_points` in `data.db` (into the corresponding indicator page's T0 series), never piled into page bodies |
+| User dictation / conversation text | Ingest as text | Mark source_type as "verbal", confidence defaults to medium |
+| URL / web page | Fetch content with WebFetch, then ingest | Record the source URL |
 
-**Agent doesn't store source file originals**—only stores source summary pages. Originals managed by user.
+**The Agent never stores source file originals** — only the immutable source summary pages under `sources/`, to which every assertion is traceable. Originals are managed by the user.

@@ -1,141 +1,141 @@
-# Information Source Validation
+# Source Validation
 
 ## Source Credibility Grading
 
-Each piece of information is labeled with source type, different types correspond to different confidence defaults:
+Every piece of information is tagged with a source type; each type maps to a default confidence:
 
 | Source Type | Tag | Default confidence | Description |
-|-------------|-----|-------------------|-------------|
-| Primary source | `[primary]` | high | Own writings, official documents, raw data, meetings personally attended |
-| Authoritative secondary | `[authoritative-secondary]` | high | Authoritative media reports, academic papers, regulatory releases |
+|-------------|-----|--------------------|-------------|
+| Primary source | `[primary]` | high | The subject's own writings, official documents, raw data, meetings attended in person |
+| Authoritative secondary | `[authoritative-secondary]` | high | Reports by authoritative media, academic papers, regulator releases |
 | Regular secondary | `[secondary]` | medium | Industry research reports, analysis articles, third-party compilations |
-| Hearsay | `[hearsay]` | low | Reprocessed content, social media discussions, unsourced info |
-| Inference | `[inference]` | low | Conclusions derived by Agent or user based on existing info |
-| Oral | `[oral]` | medium | User oral account, meeting notes, unrecorded conversations |
+| Hearsay | `[hearsay]` | low | Reprocessed content, social media discussion, information with no stated source |
+| Inference | `[inference]` | low | Conclusions derived by the Agent or the user from existing information |
+| Oral | `[oral]` | medium | User's verbal account, meeting notes, unrecorded conversations |
 
-### Labeling in Source Summary Pages
+### Tagging in Source Summary Pages
 
 ```markdown
 ---
-title: MOHRSS Enterprise Annuity New Regulations
+title: New Labor Department Pension Rules
 type: source
-source_type: primary             # Source type
-source_origin: MOHRSS official website      # Source origin
-source_date: 2026-04-01          # Original material date
-source_url: ""                   # Source URL (if available)
+source_type: primary           # Source type
+source_origin: Department of Labor official website   # Source origin
+source_date: 2026-04-01        # Date of the original material
+source_url: ""                 # Source URL (if any)
 ---
 
 ## Key Information
 
-- [primary] Enterprise annuity portable transfer new regulations released...
+- [primary] New pension portability rules released...
 - [primary] Trustee admission threshold raised to...
 ```
 
-### Labeling in Entity/Concept Pages
+### Tagging in Entity/Concept Pages
 
-When referencing sources of different credibility levels, label in body:
+When citing sources of differing credibility, tag them in the body:
 
 ```markdown
 ## Assets Under Management
 
-By end of 2025, AUM reached 120 billion yuan. [primary] (Source: [[2026-04-06-policy-doc]])
+As of end-2025, AUM reached 120 billion. [primary] (Source: [[2026-04-06-policy-doc]])
 
-Market ranking approx 3rd. [secondary] (Source: [[2025-industry-report]], non-official data)
+Market ranking roughly 3rd. [secondary] (Source: [[2025-industry-report]], unofficial data)
 ```
 
 ## Source Blacklist
 
-The following channels are not used as independent sources (can be clues but not cited):
+The following channels are never used as standalone sources (they may serve as leads but are not cited):
 
 | Channel | Reason |
 |---------|--------|
-| Zhihu | Heavy content washing, high information distortion rate |
-| WeChat Official Accounts | Closed ecosystem, unverifiable, heavy second-hand retelling |
-| Baidu Baike/Baidu Zhidao | Outdated and unreliable information |
-| Unsourced aggregated content | Untraceable, unauditable |
+| Content-mill Q&A and answer-aggregation sites | Heavy content rehashing, high distortion rate |
+| Random blogs / unattributed Substack & Medium newsletters | Unverifiable, dominated by second-hand retelling |
+| Wiki mirrors and SEO content-farm encyclopedias | Stale and unreliable information |
+| Aggregated content with no stated source | Untraceable, unauditable |
 
-**Acceptable Chinese channels**: 36Kr, GeekPark, LatePost, Caixin, CBN, Huxiu, SSPAI, Synced, regulatory official websites, listed company announcements.
+**Acceptable channels**: Reuters, Bloomberg, Financial Times, The Wall Street Journal, The Economist, MIT Technology Review, Ars Technica, peer-reviewed journals, regulator official websites, listed-company filings and announcements.
 
 ## Tool Dependency Check
 
 ### Environment Check on First Use
 
-Agent checks available tools in user environment on first ingest execution:
+On its first ingest run, the Agent checks which tools are available in the user's environment:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ Knowledge Compiler · Environment Check                   │
 │                                                          │
-│ ✅ File I/O    — Can create and edit wiki pages          │
-│ ✅ Local Search — Can grep wiki content                  │
+│  File I/O      — can create and edit wiki pages          │
+│  Local search  — can grep wiki content                   │
 │                                                          │
-│ ⚠️ Following capabilities depend on your configuration:  │
-│ {?} Web Search — Requires WebSearch tool or search MCP   │
-│ {?} Web Fetch  — Requires WebFetch tool                  │
-│ {?} PDF Read   — Requires Agent PDF support (Claude Code)│
-│ {?} Domain Data — Requires corresponding domain data MCP │
+│  The following capabilities depend on your setup:        │
+│ {?} Web search — needs WebSearch tool or a search MCP    │
+│ {?} Web fetch  — needs WebFetch tool                     │
+│ {?} PDF read   — needs Agent PDF support (Claude Code)   │
+│ {?} Domain data — needs a data MCP for the domain        │
 │                                                          │
-│ 📝 Current Mode:                                         │
-│ • User provides source files → ✅ Available anytime      │
-│ • Agent autonomous search → Requires search tools        │
+│  Current modes:                                          │
+│ • User provides source files →  always available         │
+│ • Agent searches autonomously → needs search tools       │
 └─────────────────────────────────────────────────────────┘
 ```
 
 ### Two Work Modes
 
 | Mode | Required Tools | Description |
-|------|---------------|-------------|
-| **Passive Mode** | Only file I/O | User provides source files, Agent compiles into wiki. Zero dependencies |
-| **Active Mode** | Search + Web fetch | Agent autonomously searches info, then ingests. Requires MCP/WebSearch |
+|------|----------------|-------------|
+| **Passive mode** | File I/O only | The user provides source files, the Agent compiles them into the wiki. Zero dependencies |
+| **Active mode** | Search + web fetch | The Agent searches for information autonomously, then ingests. Requires MCP/WebSearch |
 
-**Skill defaults to passive mode**—user drops files, Agent compiles. Doesn't assume user has any search tools.
+**The Skill defaults to passive mode** — the user drops files in, the Agent compiles. It assumes no search tooling on the user's side.
 
-**When user says "research XX" but doesn't provide source files**:
+**When the user says "research XX for me" but provides no source files**:
 
 ```
-Agent: How would you like me to obtain materials?
+Agent: How would you like me to obtain the materials?
 
-1. You provide files/text → I compile directly (recommended)
-2. I search autonomously → Need to confirm you have:
-   - WebSearch or search MCP tools
-   - WebFetch (read web content)
-   If not, I cannot autonomously obtain materials.
+1. You provide files/text → I compile them directly (recommended)
+2. I search autonomously → I need to confirm you have:
+   - WebSearch or a search-type MCP tool
+   - WebFetch (to read web content)
+   Without these, I cannot obtain materials on my own.
 ```
 
 ### Search Tool Adaptation
 
-If user has search tools, Agent's ingest flow expands to:
+If the user has search tools, the Agent's ingest flow extends to:
 
 ```
-1. Create search plan by research topic (what to search, where to search)
-2. Execute search, get candidate source list
-3. Grade sources by credibility, prioritize primary/authoritative sources
-4. Execute standard ingest flow for each valuable source
-5. Record search keywords and filtering process in source summary page
+1. Draw up a search plan for the research topic (what to search, where to search)
+2. Run the searches and collect a candidate source list
+3. Grade sources by credibility; read primary/authoritative sources first
+4. Run the standard ingest flow on every source worth keeping
+5. Record the search keywords and the filtering process in the source summary page
 ```
 
-**Key principle: Search is means to obtain source files, doesn't change ingest core logic (read old, compare new, modify old).**
+**Key principle: search is a means of obtaining source files; it does not change ingest's core logic (read the old, compare the new, revise the old).**
 
-### Deep-Dive Search Source Labeling
+### Tagging Deep-Dive Search Sources
 
-When sources are obtained by deep-dive pipeline's automated search, the source summary page needs additional deep-dive metadata:
+When a source was obtained by the deep-dive pipeline's automated search, the source summary page must record extra deep-dive metadata:
 
 ```yaml
 ---
 title: Alpha Corp 2025 Annual Report Summary
 type: source
-source_type: secondary     # Graded by actual content, not affected by search method
-source_origin: Caixin
+source_type: secondary     # Graded on its own merits — not changed by how it was found
+source_origin: Reuters
 source_date: 2025-06-15
 source_url: "https://..."
-deep_dive_meta:            # deep-dive specific fields
-  search_query: "Alpha Corp enterprise annuity annual report 2025"
+deep_dive_meta:            # deep-dive-specific fields
+  search_query: "Alpha Corp pension annual report 2025"
   gap_filled: "single_source:alpha-corp"
   search_date: 2026-04-09
 ---
 ```
 
 **Confidence ceiling rules**:
-- Search-sourced content has confidence ceiling of medium, unless source qualifies as "primary" or "authoritative-secondary"
-- Multiple search sources corroborating the same conclusion can raise confidence to high
-- Source's source_type is still graded by standard criteria, not affected by acquisition method (search vs user-provided)
+- Search-obtained sources have a confidence ceiling of medium, unless the source qualifies as "primary" or "authoritative-secondary"
+- When multiple search sources corroborate the same conclusion, confidence may rise to high
+- A source's source_type is still graded by the standard criteria — never altered by how it was acquired (search vs user-provided)

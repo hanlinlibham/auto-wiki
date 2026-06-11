@@ -1,40 +1,40 @@
 # Query Protocol
 
-> Answer questions based on wiki accumulation. Not RAG—don't search raw documents, search compiled wiki pages.
+> Answer questions from accumulated wiki knowledge. This is not RAG — we do not search raw documents, we search compiled wiki pages.
 
 ## Flow
 
 ```
-1. Understand question
-   ├─ Identify target wiki (inferred from question, or user specified)
-   ├─ Extract keywords (entity names, concept names, date ranges)
-   └─ Determine question type (fact query / comparative analysis / trend judgment / open exploration)
+1. Understand the question
+   ├─ Identify the target wiki (inferred from the question, or user-specified)
+   ├─ Extract keywords (entity names, concept names, time ranges)
+   └─ Determine the question type (fact lookup / comparative analysis / trend judgment / open exploration)
 
-2. Search wiki
-   ├─ Read index.md, match page titles and descriptions by keywords
-   ├─ Read matched pages (usually 3-8)
-   ├─ If page has [[wikilink]], follow link to read related pages (one level expansion)
-   └─ Note confidence field: contested pages need special labeling
+2. Search the wiki
+   ├─ Read the hub page ({Domain Name}.md) and match page titles and descriptions against the keywords
+   ├─ Read the matched pages (usually 3-8)
+   ├─ If a page contains [[wikilink]]s, follow them to read linked pages (one level of expansion)
+   └─ Watch the confidence field: contested pages require explicit labeling
 
-3. Synthesize answer
-   ├─ Synthesize based on read page content
-   ├─ Label each key claim with source page: [[page-slug]]
-   ├─ If involving contested info, clearly state:
-   │   "On XX, wiki contains conflict: Source A says..., Source B says..."
-   └─ If info insufficient, clearly state gap and suggest ingest direction
+3. Synthesize the answer
+   ├─ Synthesize from the content of the pages read
+   ├─ Tag every key claim with its source page: [[page-slug]]
+   ├─ If contested information is involved, state it explicitly:
+   │   "On XX, the wiki contains a contradiction: source A says..., source B says..."
+   └─ If information is insufficient, state the gap explicitly and suggest ingest directions
 
-4. Optional archive
-   ├─ If answer contains valuable new analysis (not simple repetition of page content)
-   ├─ Prompt user: "Should this analysis be archived to wiki?"
-   └─ User agrees → Write to analyses/{slug}.md, update index
+4. Optional archiving
+   ├─ If the answer contains valuable new analysis (not a simple restatement of page content)
+   ├─ Prompt the user: "Should this analysis be archived to the wiki?"
+   └─ User agrees → write to analyses/{slug}.md and update the hub page
 ```
 
 ## Response Format
 
-### Fact Query
+### Fact Lookup
 
 ```
-Based on {N} source files accumulated in wiki:
+Based on {N} source files accumulated in the wiki:
 
 {Direct answer}
 
@@ -44,7 +44,7 @@ Sources: [[page-1]], [[page-2]]
 ### Comparative Analysis
 
 ```
-Based on wiki records, comparison of {A} and {B}:
+Based on the wiki's records, comparing {A} and {B}:
 
 | Dimension | {A} | {B} |
 |-----------|-----|-----|
@@ -52,33 +52,33 @@ Based on wiki records, comparison of {A} and {B}:
 
 Sources: [[page-1]], [[page-2]], [[page-3]]
 
-Note: On XX dimension, wiki data is limited (only 1 source), suggest supplement.
+Note: On dimension XX, wiki data is limited (only 1 source); supplementing is recommended.
 ```
 
 ### Insufficient Information
 
 ```
-Wiki information on {topic} is insufficient:
+The wiki's information on {topic} is insufficient:
 - Related pages: {N}
 - Source files: {N}
-- Gap: {specifically what's missing}
+- Gap: {what specifically is missing}
 
-Suggest ingesting:
-- {Suggested material type 1}
-- {Suggested material type 2}
+Suggested ingest:
+- {suggested material type 1}
+- {suggested material type 2}
 ```
 
 ## Cross-Wiki Query
 
-When question spans multiple wikis:
+When a question spans multiple wikis:
 
-1. List all wiki directories under `.wiki/`
-2. Read index.md of each potentially relevant wiki
-3. Search separately
-4. Label sources by wiki when synthesizing answer:
+1. List all wiki directories under `wiki/`
+2. Read the hub page of every potentially relevant wiki
+3. Search each separately
+4. When synthesizing the answer, tag which wiki each source belongs to:
 
 ```
-Synthesizing content from enterprise-annuity wiki and charlie-munger wiki:
+Synthesizing across the enterprise-annuity wiki and the charlie-munger wiki:
 
 {Analysis}
 
@@ -89,9 +89,9 @@ Sources:
 
 ## Query Performance
 
-| Wiki Scale | Query Strategy | Expected Latency |
-|------------|----------------|------------------|
-| < 30 pages | Read index + directly read matched pages | Fast (< 5s) |
-| 30-150 pages | Read index + grep keywords + read top matches | Medium (5-15s) |
-| 150-500 pages | Read index + grep + batch read | Slow (15-30s) |
-| > 500 pages | Beyond Skill design scope | Suggest migration to platform |
+| Wiki Size | Query Strategy | Expected Latency |
+|-----------|----------------|------------------|
+| < 30 pages | Read hub page + read matched pages directly | Fast (< 5s) |
+| 30-150 pages | Read hub page + grep keywords + read top matches | Medium (5-15s) |
+| 150-500 pages | Read hub page + grep + batched reads | Slow (15-30s) |
+| > 500 pages | Beyond the Skill's design scope | Suggest migrating to a platform |

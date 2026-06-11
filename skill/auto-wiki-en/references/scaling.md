@@ -1,60 +1,62 @@
-# Wiki Scaling Solution
+# Wiki Scaling Plan
 
-> Default mode (grep + index.md) works for < 500 pages. Beyond that, enable SQLite index layer.
-> Zero additional dependencies—Python 3 built-in sqlite3 + FTS5.
+> The default mode (grep + hub page) works for < 500 pages. Beyond that, enable the SQLite index layer.
+> Zero extra dependencies — Python 3 ships with sqlite3 + FTS5.
 
 ## Three-Tier Retrieval Strategy
 
 | Tier | Page Count | Retrieval Method | Trigger |
 |------|------------|------------------|---------|
-| L0 | < 50 | Read index.md + directly read pages | Default |
-| L1 | 50-500 | Hierarchical index + grep keywords | Auto-switch when pages > 50 |
-| L2 | 500+ | SQLite FTS5 + BM25 ranking | Pages > 500 or manual enable |
+| L0 | < 50 | Read hub page + read pages directly | Default |
+| L1 | 50-500 | Layered hub pages + grep keywords | Auto-switch when pages > 50 |
+| L2 | 500+ | SQLite FTS5 + BM25 ranking | Pages > 500 or user enables manually |
 
 ---
 
-## L1: Hierarchical Index (50-500 pages)
+## L1: Layered Index (50-500 pages)
 
-When page count exceeds 50, index.md splits into hierarchical structure:
+When the page count exceeds 50, the hub page splits into a layered structure:
 
 ```
-.wiki/{topic}/
-├── index.md              # Top-level index (only category summary + links to sub-indexes)
-├── entities/
-│   └── _index.md         # Entity sub-index (titles + one-liners for all pages in dir)
-├── concepts/
-│   └── _index.md         # Concept sub-index
-├── sources/
-│   └── _index.md         # Source sub-index
-└── analyses/
-    └── _index.md         # Analysis sub-index
+wiki/{domain}/
+├── {Domain Name}.md           # Top-level hub (category summaries + links to sub-indexes only)
+├── institutions/  _index.md   # Institutions sub-index (title + one-liner for every page in the directory)
+├── instruments/   _index.md   # Instruments sub-index
+├── indicators/    _index.md   # Indicators sub-index
+├── mechanisms/    _index.md   # Mechanisms sub-index
+├── events/        _index.md   # Events sub-index
+├── analyses/      _index.md   # Analyses sub-index
+└── sources/       _index.md   # Sources sub-index
 ```
 
-**Top-level index.md becomes navigation page**:
+**The top-level hub page becomes a navigation page**:
 
 ```markdown
-# {topic} Wiki Index
+# {Domain Name} Wiki Index
 
 > 287 pages | Last updated: 2026-04-06
 
 ## Overview
-- Sources: 45 → [sources/_index.md]
-- Entities: 120 → [entities/_index.md]
-- Concepts: 87 → [concepts/_index.md]
+- Institutions: 12 → [institutions/_index.md]
+- Instruments: 40 → [instruments/_index.md]
+- Indicators: 60 → [indicators/_index.md]
+- Mechanisms: 35 → [mechanisms/_index.md]
+- Events: 50 → [events/_index.md]
 - Analyses: 35 → [analyses/_index.md]
+- Sources: 55 → [sources/_index.md]
 
-## Recent Ingest (last 10)
-- 2026-04-06: policy-doc → Updated 8 pages
-- 2026-04-05: annual-report → Updated 5 pages
+## Recent ingest (last 10)
+- 2026-04-06: policy-doc → updated 8 pages
+- 2026-04-05: annual-report → updated 5 pages
 ...
 
-## Top 10 Entities (most referenced)
+## Top 10 high-frequency entities (most referenced)
 - [[alpha-corp]] (23 references)
-- [[national-council-ssf]] (18 references)
+- [[CalPERS]] (18 references)
 ...
 ```
 
-Agent queries read top-level index to locate category, then read corresponding sub-index to locate specific pages, avoiding loading all at once.
+When querying, the Agent first reads the top-level hub page to locate the category, then reads the corresponding sub-index to locate the specific pages — avoiding loading everything at once.
 
 ---
 
@@ -62,12 +64,12 @@ Agent queries read top-level index to locate category, then read corresponding s
 
 ### Principle
 
-Wiki pages (markdown) remain the data source. SQLite is just an index—can be rebuilt from pages if lost.
+The wiki pages (markdown) remain the source of truth. SQLite is only an index — if lost, it can be rebuilt from the pages.
 
 ```
-.wiki/{topic}/
+wiki/{topic}/
 ├── search.db            # SQLite index file (auto-generated, rebuildable)
-├── index.md             # Keep (for human browsing)
+├── {Domain Name}.md     # Kept (for human browsing)
 ├── meta.yaml
 └── ...
 ```
@@ -93,17 +95,17 @@ CREATE VIRTUAL TABLE pages_fts USING fts5(
     content,
     content='pages',
     content_rowid='rowid',
-    tokenize='unicode61'          -- Supports Chinese tokenization
+    tokenize='unicode61'          -- Unicode-aware tokenization
 );
 
--- Wikilink relationship table
+-- Wikilink relation table
 CREATE TABLE links (
     from_slug TEXT NOT NULL,
     to_slug TEXT NOT NULL,
     PRIMARY KEY (from_slug, to_slug)
 );
 
--- Trigger: Auto-update FTS index when pages change
+-- Trigger: keep the FTS index updated when pages change
 CREATE TRIGGER pages_ai AFTER INSERT ON pages BEGIN
     INSERT INTO pages_fts(rowid, title, content)
     VALUES (new.rowid, new.title, new.content);
@@ -112,16 +114,16 @@ END;
 
 ### Index Build Script
 
-Agent auto-executes after ingest (if search.db exists):
+The Agent runs this automatically after ingest completes (if search.db exists):
 
 ```python
 #!/usr/bin/env python3
-"""Rebuild SQLite FTS5 index from wiki markdown files."""
+"""Rebuild the SQLite FTS5 index from wiki markdown files."""
 import sqlite3, os, re, json, yaml
 from pathlib import Path
 
 def parse_page(path):
-    """Parse markdown page, extract frontmatter and body."""
+    """Parse a markdown page, extracting frontmatter and body."""
     text = path.read_text(encoding='utf-8')
     if text.startswith('---'):
         _, fm, body = text.split('---', 2)
@@ -130,7 +132,7 @@ def parse_page(path):
     return {}, text
 
 def extract_links(content):
-    """Extract [[wikilink]]."""
+    """Extract [[wikilink]]s."""
     return re.findall(r'\[\[([^\]]+)\]\]', content)
 
 def build_index(wiki_dir):
@@ -138,7 +140,7 @@ def build_index(wiki_dir):
     conn = sqlite3.connect(str(db_path))
     c = conn.cursor()
 
-    # Create tables (if not exist)
+    # Create tables (if they don't exist)
     c.executescript('''
         CREATE TABLE IF NOT EXISTS pages (
             slug TEXT PRIMARY KEY, type TEXT, title TEXT,
@@ -195,19 +197,19 @@ if __name__ == '__main__':
     print(f'Indexed {n} pages → {wiki_dir}/search.db')
 ```
 
-### Query Method
+### Querying
 
-Agent uses Python to query SQLite in query operation:
+In the query operation, the Agent queries SQLite via Python:
 
 ```python
 #!/usr/bin/env python3
-"""BM25 search wiki pages."""
+"""BM25 search over wiki pages."""
 import sqlite3, sys, json
 
 def search(db_path, query, limit=10):
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
-    # BM25 ranking: FTS5 built-in, smaller rank = more relevant
+    # BM25 ranking: built into FTS5; the smaller the rank, the more relevant
     results = c.execute('''
         SELECT p.slug, p.type, p.title, p.confidence,
                snippet(pages_fts, 1, '>>>', '<<<', '...', 30) as snippet,
@@ -233,26 +235,26 @@ if __name__ == '__main__':
 **Usage example**:
 
 ```bash
-# Build index
-python3 build_index.py .wiki/enterprise-annuity/
+# Build the index
+python3 build_index.py wiki/enterprise-annuity/
 
 # BM25 search
-python3 search.py .wiki/enterprise-annuity/search.db "trustee market share"
+python3 search.py wiki/enterprise-annuity/search.db "trustee market share"
 
 # Output
 # [entity] Alpha Corp Pension Business (alpha-corp) confidence=high rank=-3.42
-#   ...trustee>>>market share<<<approx 15%...
+#   ...trustee >>>market share<<< approx 15%...
 # [analysis] Trustee Market Landscape Comparison (trustee-market-comparison) confidence=high rank=-2.87
-#   ...each>>>trustee<<<>>>market share<<<change...
+#   ...each >>>trustee<<<'s >>>market share<<< shift...
 ```
 
-### Backlink Query
+### Backlink Queries
 
 ```sql
 -- Who references alpha-corp?
 SELECT from_slug FROM links WHERE to_slug = 'alpha-corp';
 
--- Who does alpha-corp reference?
+-- Whom does alpha-corp reference?
 SELECT to_slug FROM links WHERE from_slug = 'alpha-corp';
 
 -- Most isolated pages (fewest incoming links)
@@ -274,7 +276,7 @@ LIMIT 10;
 
 ### Lint Enhancement
 
-In L2 mode, lint can efficiently execute via SQL:
+In L2 mode, lint can run efficiently via SQL:
 
 ```sql
 -- Find contested pages
@@ -290,7 +292,7 @@ SELECT l.from_slug, l.to_slug FROM links l
 LEFT JOIN pages p ON p.slug = l.to_slug
 WHERE p.slug IS NULL;
 
--- Find stale pages (6 months no update + low confidence)
+-- Find stale pages (no update in 6 months + low confidence)
 SELECT slug, title, updated, confidence FROM pages
 WHERE updated < date('now', '-6 months')
 AND confidence IN ('low', 'medium');
@@ -307,11 +309,11 @@ FROM pages GROUP BY type;
 
 | Signal | Recommendation |
 |--------|----------------|
-| index.md exceeds 200 lines | Enable L1 hierarchical index |
+| Hub page exceeds 200 lines | Enable L1 layered index |
 | grep search > 5 seconds | Enable L2 SQLite index |
-| Page count > 500 | Must enable L2 |
-| Need backlink queries | Enable L2 (links table) |
-| Need BM25 ranking | Enable L2 (FTS5) |
-| Multi-user collaboration / vector retrieval | Beyond Skill scope → Migrate to external platform |
+| Page count > 500 | L2 is mandatory |
+| Backlink queries needed | Enable L2 (links table) |
+| BM25 ranking needed | Enable L2 (FTS5) |
+| Multi-user collaboration / vector retrieval | Beyond Skill scope → migrate to an external platform |
 
-**Upgrade is non-destructive**—wiki pages (markdown) remain unchanged, only adds search.db alongside. Delete search.db, wiki remains fully usable, just falls back to grep retrieval.
+**Upgrades are non-destructive** — the wiki pages (markdown) stay unchanged; only a search.db appears alongside them. Delete search.db and the wiki remains fully usable, just falling back to grep retrieval.

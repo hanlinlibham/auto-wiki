@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 — 2026-06-11 (CN skill; EN pending re-translation)
+## 0.3.0 — 2026-06-11
 
 ### Changed (breaking)
 - **Visible `wiki/` replaces `.wiki/`** — dotfolders are hidden by Obsidian and never appear in the graph; knowledge must live in a visible directory (`.obsidian/` config is the only allowed dot-dir)
@@ -16,7 +16,7 @@
 - recall mode formalized as a persistent session state (vs single-shot query)
 
 ### Notes
-- `skill/auto-wiki-en/` remains at 0.2.0 pending re-translation of the new protocols
+- `skill/auto-wiki-en/` fully re-translated and localized to 0.3.0: English type directories (`institutions/ instruments/ indicators/ mechanisms/ events/ analyses/ sources/`), natural-language English slugs (slug = filename = wikilink = data.db key), English trigger words, source-grade vocabulary aligned with `schema.py` enums
 - auto-wiki now also ships bundled as the compilation engine inside [Burrow](https://github.com/abuttoncc/Burrow)
 
 ## 0.2.0 — 2026-04-09

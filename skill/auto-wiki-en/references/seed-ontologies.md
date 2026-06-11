@@ -1,26 +1,26 @@
-# Seed Ontologies: Guide Wiki Structure with Standard Vocabularies
+# Seed Ontologies: Bootstrapping Wiki Structure with Standard Vocabularies
 
-> Seeds are optional cold-start references, not mandatory dependencies.
-> Domains without seeds, wikis grow freely—seeds just make starting more standardized.
+> Seeds are an optional cold-start reference, not a hard dependency.
+> Domains without a seed grow freely — a seed merely makes the start more disciplined.
 
 ## Mechanism
 
-### What is a Seed
+### What a Seed Is
 
 A seed is a domain vocabulary configuration containing:
 
 | Content | Purpose |
 |---------|---------|
-| **Standard terms** | Provide naming reference for wiki page slugs and titles |
-| **Classification system** | Hint to Agent what dimensions this domain typically needs to cover |
-| **Relationship templates** | Standard inter-entity relationship types (manages, regulates, invests_in, etc.) |
-| **Non-mixing rules** | Label common concept confusions, prevent Agent from mixing them up |
+| **Standard terms** | Naming reference for wiki page slugs and titles |
+| **Classification scheme** | Hints to the Agent which dimensions the domain typically needs to cover |
+| **Relation templates** | Standard inter-entity relation types (manages, regulates, invests_in, etc.) |
+| **No-confusion rules** | Flag common concept mix-ups so the Agent doesn't conflate them |
 
-Seed files are stored in `seeds/` directory, one file per domain.
+Seed files live in the `seeds/` directory, one file per domain.
 
-### How to Reference
+### How to Reference One
 
-When creating new wiki, declare which seed to use in `meta.yaml`:
+When creating a new wiki, declare which seed to use in `meta.yaml`:
 
 ```yaml
 name: my-research-topic
@@ -28,110 +28,110 @@ ontology_type: domain
 seed: fibo-pensions          # References seeds/fibo-pensions.md
 ```
 
-Agent reads corresponding seed file before first ingest. If `seed` field is empty or not set, skip seed, wiki grows freely.
+The Agent reads the corresponding seed file before the first ingest. If the `seed` field is empty or unset, skip the seed and let the wiki grow freely.
 
-### What It Doesn't Do
+### What It Does Not Do
 
-- No OWL/RDF import—wiki is markdown, not semantic web
-- No forced standard terms—if domain actual usage differs, use actual, but label mapping relationship
-- No override of user customization—seed is just starting reference, wiki evolves beyond seed scope
+- No OWL/RDF import — the wiki is markdown, not the semantic web
+- No forced standard terminology — if the domain's actual usage differs, follow actual usage but note the mapping
+- No overriding of user customizations — the seed is only a starting reference; as the wiki evolves it will outgrow the seed
 
 ---
 
 ## Available Seeds
 
-| Seed File | Coverage Domain | Based On |
-|-----------|-----------------|----------|
-| `seeds/fibo-pensions.md` | Enterprise annuity, pension management | FIBO (EDM Council) |
+| Seed File | Domain Covered | Based On |
+|-----------|----------------|----------|
+| `seeds/fibo-pensions.md` | Occupational pensions, pension management | FIBO (EDM Council) |
 | *(to be extended)* | | |
 
-### Referenceable Industry Standard Ontologies
+### Industry-Standard Ontologies Worth Referencing
 
-When writing new seeds, can reference these standards:
+When writing a new seed, these standards are useful references:
 
-| Standard | Coverage Domain | Applicable Scenario | Reference Link |
-|----------|-----------------|---------------------|----------------|
-| **FIBO** | Full financial industry | Banking, insurance, funds, pensions | spec.edmcouncil.org/fibo |
-| **XBRL Taxonomy** | Financial reporting | Listed company financial data analysis | xbrl.org |
+| Standard | Domain Covered | Use Case | Reference Link |
+|----------|----------------|----------|----------------|
+| **FIBO** | Entire financial industry | Banking, insurance, funds, pensions | spec.edmcouncil.org/fibo |
+| **XBRL Taxonomy** | Financial reporting | Listed-company financial data analysis | xbrl.org |
 | **Schema.org** | General entities | People, organizations, events, places | schema.org |
-| **SKOS** | Knowledge organization | Classification systems, concept hierarchies | w3.org/2004/02/skos |
-| **Dublin Core** | Document metadata | Source page frontmatter | dublincore.org |
+| **SKOS** | Knowledge organization | Classification schemes, concept hierarchies | w3.org/2004/02/skos |
+| **Dublin Core** | Document metadata | Frontmatter of source pages | dublincore.org |
 | **FOAF** | People & social | Person research (cognitive type) | xmlns.com/foaf |
 
 | Research Type | Recommended Seed/Standard |
 |---------------|---------------------------|
-| Enterprise annuity / pensions | `fibo-pensions` |
-| Public funds | FIBO-SEC (Fund), can write new seed based on this |
-| Listed company analysis | FIBO-BP + XBRL |
-| Macro economy | No standard seed (free growth) |
-| Person cognition | FOAF + custom mental model types |
+| Occupational / corporate pensions | `fibo-pensions` |
+| Mutual funds | FIBO-SEC (Fund) — a new seed can be written on top of it |
+| Listed-company analysis | FIBO-BP + XBRL |
+| Macroeconomics | No standard seed (free growth) |
+| Person cognition | FOAF + custom mental-model types |
 | General topics | Schema.org |
 
 ---
 
-## How Agent Uses Seeds
+## How the Agent Uses Seeds
 
 ### During Ingest
 
 ```
-1. Read source file, extract key entities
-2. If meta.yaml declared seed → Read seed file, reference vocabulary:
-   - Does this entity have a standard name? → Use standard name as page slug
-   - What standard category does this entity belong to? → Place in corresponding entities/ or concepts/
-   - Does it touch non-mixing rules? → Clearly distinguish in page
-3. Execute normal ingest subsequent steps
+1. Read the source file, extract key entities
+2. If meta.yaml declares a seed → read the seed file and check against the vocabulary:
+   - Does the entity have a standard name? → Use the standard name as the page slug
+   - Which standard category does it belong to? → Place under the matching entities/ or concepts/
+   - Does it touch a no-confusion rule? → Distinguish explicitly on the page
+3. Continue with the normal ingest steps
 ```
 
-**Example** (using financial domain):
+**Example** (financial domain):
 ```
-Source file mentions a bank's pension business
-→ Reference seed vocabulary: This is an Organization, serving as Trustee role
+A source file mentions a bank's pension business
+→ Check the seed vocabulary: this is an Organization acting in the Trustee role
 → Create entities/bank-x.md (institution page)
-→ Label in relationships that bank-x serves as trustee role
-→ Don't create entities/bank-x-trustee.md (organization ≠ role, obey non-mixing rules)
+→ In the relations, note that bank-x acts as trustee
+→ Do NOT create entities/bank-x-trustee.md (organization ≠ role — obey the no-confusion rules)
 ```
 
 ### During Lint
 
 ```
-1. If meta.yaml declared seed → Read seed file
-2. Check if page naming aligns with seed vocabulary
-3. Check if non-mixing rules are violated
-4. Check if key dimensions from seed are uncovered
-5. Output alignment score in health report
+1. If meta.yaml declares a seed → read the seed file
+2. Check whether page naming aligns with the seed vocabulary
+3. Check for violations of the no-confusion rules
+4. Check whether any key dimension from the seed remains uncovered
+5. Output an alignment score in the health report
 ```
 
 ### During Query
 
 ```
-User asks about a domain term
-→ Agent knows the term's standard position and related concepts from seed vocabulary
-→ Search expands to related concepts
-→ More comprehensive answer
+The user asks about a domain term
+→ From the seed vocabulary, the Agent knows the term's standard position and related concepts
+→ The search expands to those related concepts
+→ The answer is more complete
 ```
 
 ---
 
 ## External Validators
 
-Seed files can declare associated external validators (frontmatter `validator` field).
-Validators provide runtime logic validation, beyond seed's static vocabulary—validating domain/range legality of relations, whether entities have required relations, etc.
+A seed file may declare an associated external validator (the `validator` field in its frontmatter).
+A validator provides runtime logical validation beyond the seed's static vocabulary — checking the domain/range legality of relations, whether an entity's required relations are missing, and so on.
 
-Validator configurations are stored in `validators/` directory. See specific validator documentation for details.
+Validator configurations live in the `validators/` directory. See each validator's documentation for details.
 
-Current available validators:
+Currently available validators:
 
 | Validator | Description | Corresponding Seed |
-|-----------|-------------|-------------------|
-| `validators/fibo-mcp.md` | FIBO SPARQL logic validation (627K inferred triples) | `fibo-pensions` |
+|-----------|-------------|--------------------|
+| `validators/fibo-mcp.md` | FIBO SPARQL logical validation (627K inferred triples) | `fibo-pensions` |
 
-**Validators are optional enhancements**. When unreachable, lint falls back to schema.py format validation + seed static rules, not affecting core flow.
+**Validators are an optional enhancement.** When unreachable, lint degrades to schema.py format validation + the seed's static rules, without affecting the core flow.
 
 ---
 
 ## Limitations
 
-1. **Seeds are starting points, not endpoints**. Wiki accumulation produces concepts not in seeds
-2. **Standard terms may differ from industry actual usage**. Use industry terminology, but label standard term mapping in pages
-3. **Not all domains have mature standard ontologies**. Domains without suitable seeds, wikis grow freely
-4. **Seeds themselves evolve**. When standards update, wikis don't need to sync—seeds only referenced once at cold start
+1. **A seed is a starting point, not an endpoint.** As the wiki accumulates, it will produce concepts the seed never had
+2. **Standard terms may differ from the industry's actual usage.** Follow industry usage, but note the standard-term mapping on the page
+3. **Not every domain has a mature standard ontology.** Domains with no suitable seed simply grow freely
+4. **Seeds themselves evolve.** When a standard updates, the wiki need not sync — seeds are consulted only once, at cold start

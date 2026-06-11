@@ -1,75 +1,75 @@
-# Cognitive Ontology: Collection and Synthesis Strategy for Person Research
+# Cognitive Ontology: Collection & Synthesis Strategy for Person Research
 
-> Use this strategy when research target is a **person** (their thinking patterns, decision modes, expression styles).
-> Adapted from cognitive profiling methodology, only covers wiki accumulation phase, not final persona crystallization.
+> Use this strategy when the research subject is a **person** (their way of thinking, decision patterns, expression style).
+> Adapted from cognitive-profile methodology; covers only the wiki accumulation phase, not final persona crystallization.
 
 ---
 
-## 1. Six-Dimension Collection Framework
+## I. Six-Dimension Collection Framework
 
 Each dimension corresponds to one ingest, producing one source page.
 
-| Dimension | Search For | Extract | Source Page Output |
-|-----------|-----------|---------|-------------------|
-| **Writings** | Books, long articles, papers, newsletters | Recurring core claims (>=3 times = true belief); self-coined terms; recommended reading lists (intellectual lineage) | `sources/{date}-writings.md` |
-| **Conversations** | Podcasts, long videos, AMAs, deep interviews | Responses when pressed; spontaneous analogies; moments of changing position; questions declined | `sources/{date}-conversations.md` |
-| **Expression DNA** | Twitter/X, Weibo, Jike, short posts | High-frequency word patterns; controversial positions; humor style; public debates | `sources/{date}-expression-dna.md` |
-| **External Views** | Others' analysis, book reviews, criticism, biographies | Patterns observed externally; criticism and controversy; comparisons with peers | `sources/{date}-external-views.md` |
-| **Decision Records** | Major decisions, turning points, controversial actions | Decision context and logic; post-hoc reflections; consistent/inconsistent cases | `sources/{date}-decisions.md` |
-| **Timeline** | Complete resume + recent 12 months activity | Key milestones; intellectual turning points; latest status (prevents staleness) | `sources/{date}-timeline.md` |
+| Dimension | What to search | What to extract | Source page output |
+|------|---------|---------|----------------|
+| **Writings** | Books, long-form essays, papers, newsletters | Recurring core arguments (>=3 occurrences = genuine belief); coined terms; recommended reading lists (intellectual lineage) | `sources/{date}-writings.md` |
+| **Conversations** | Podcasts, long videos, AMAs, in-depth interviews | How they answer under probing; improvised analogies; moments of changing position; questions they refuse to answer | `sources/{date}-conversations.md` |
+| **Expression DNA** | Twitter/X, Weibo, Jike, short posts | High-frequency wording and sentence patterns; controversial stances; style of humor; public debates | `sources/{date}-expression-dna.md` |
+| **External Views** | Others' analyses, book reviews, critiques, biographies | Externally observed patterns; criticism and controversies; comparison with peers | `sources/{date}-external-views.md` |
+| **Decision Records** | Major decisions, turning points, controversial actions | Decision context and logic; after-the-fact reflection; cases of word-deed consistency/inconsistency | `sources/{date}-decisions.md` |
+| **Timeline** | Full career history + last 12 months of activity | Key milestones; intellectual turning points; latest status (anti-staleness) | `sources/{date}-timeline.md` |
 
-**Information grading**: Every extraction must label source type—primary (own words) > secondary (others' retelling) > speculation.
+**Information grading**: every extracted item must label its source type — primary (the person's own words) > secondary (others' retelling) > inference.
 
-**Source priority**: Own writings/long interviews/actual decisions > Social media/Others' evaluation > Second-hand retelling.
-Source blacklist: Zhihu, WeChat Official Accounts, Baidu Baike. For Chinese figures, prioritize Bilibili original videos, Xiaoyuzhou podcasts, authoritative media (36Kr/LatePost/Caixin).
+**Source priority**: own writings / long interviews / actual decisions > social media / others' assessments > secondhand retelling.
+Source blacklist: Zhihu, WeChat official accounts, Baidu Baike. For Chinese-speaking subjects, prefer original Bilibili videos, Xiaoyuzhou podcasts, and authoritative media (36Kr / LatePost / Caixin).
 
 ---
 
-## 2. Synthesis Rules
+## II. Synthesis Rules
 
-After all 6 dimension source pages are ready, execute synthesis, producing entity and concept pages.
+Once all 6 source pages are in place, run synthesis to produce entity and concept pages.
 
-### 2.1 Triple Verification (Mental Model vs Decision Heuristic)
+### 2.1 Triple Verification (mental model vs decision heuristic)
 
-List candidate claims from all sources (usually 15-30), verify one by one:
+List candidate arguments from all sources (typically 15-30), then verify each one:
 
-| Verification Dimension | Determination Method | Pass Criteria |
-|------------------------|---------------------|---------------|
-| **Cross-domain reproducibility** | Same thinking framework appears in >=2 different domains/topics | Writings + Decisions both confirm |
-| **Generative power** | Using this model can infer person's stance on unaddressed issues | Can produce reasonable predictions |
-| **Exclusivity** | Not all smart people think this way, reflects this person's unique perspective | Has discriminative power |
+| Verification dimension | Method | Pass signal |
+|---------|---------|---------|
+| **Cross-domain recurrence** | Same thinking framework appears in >=2 distinct domains/topics | Corroborated by both writings and decisions |
+| **Generative power** | The model can predict the person's stance on questions they have not addressed | Produces plausible predictions |
+| **Exclusivity** | Not how every smart person thinks; reflects this person's distinctive perspective | Discriminative |
 
-- Triple pass → Mental model (write to entity page)
-- Only 1-2 passes → Downgrade to decision heuristic (write to concept page)
-- 0 passes → Not included in wiki
+- Passes all three → mental model (write into an entity page)
+- Passes only 1-2 → downgrade to decision heuristic (write into a concept page)
+- Passes none → not included in the wiki
 
 ### 2.2 Expression DNA Quantification
 
-From person's long writings/speeches, extract 20 segments, count:
+Sample 20 passages from the person's long-form writing/speeches and measure:
 
-- **Sentence fingerprint**: Average sentence length, question ratio, analogy density (/1000 words), first-person frequency, certainty tone ratio
-- **Style tags** (7-axis score): Formal-Vernacular, Abstract-Concrete, Cautious-Assertive, Academic-Popular, Long sentence-Short sentence, Setup-first-Conclusion-first, Data-driven-Narrative-driven
-- **Taboo words and verbal tics**: Words never used + high-frequency expressions
+- **Sentence fingerprint**: average sentence length, question ratio, analogy density (per 1,000 words), first-person frequency, certainty-tone ratio
+- **Style tags** (scored on 7 axes): formal-colloquial, abstract-concrete, cautious-assertive, academic-popular, long-short sentences, build-up vs conclusion-first, data-driven vs narrative-driven
+- **Taboo words and verbal tics**: words never used + high-frequency expressions
 
-Produce a concept page: `concepts/expression-dna.md`.
+Output one concept page: `concepts/expression-dna.md`.
 
-### 2.3 Conflict Handling
+### 2.3 Contradiction Handling
 
-Conflicts are personality traits, not bugs to fix. Handle in three categories:
+Contradictions are personality features, not bugs to be fixed. Handle them in three categories:
 
-| Conflict Type | Meaning | Wiki Treatment |
-|---------------|---------|----------------|
-| **Temporal conflict** | Early said A, later said B (view evolution) | Record evolution trajectory in page, label periods; confidence stays `high` |
-| **Domain conflict** | Advocates X at work, Y in life | Record by domain, don't force unity; this is source of depth |
-| **Essential tension** | Intrinsic value conflict (e.g., pursues both freedom and discipline) | Create independent concept page `concepts/tension-{name}.md`, label as core tension |
+| Contradiction type | Meaning | Treatment in the wiki |
+|---------|------|--------------|
+| **Temporal contradiction** | Said A early on, B later (opinion evolution) | Record the evolution trajectory in the page, labeling the periods; confidence stays `high` |
+| **Domain contradiction** | Advocates X at work, Y in private life | Record per domain, no forced unification; this is where depth comes from |
+| **Essential tension** | Internal value conflict (e.g. prizing freedom yet valuing discipline) | Create a standalone concept page `concepts/tension-{name}.md`, marked as a core tension |
 
-Never do: pick one side and ignore the other, fabricate reconciliation, pretend conflict doesn't exist.
+Never do: pick one side and ignore the other, fabricate reconciling explanations, or pretend the contradiction does not exist.
 
 ---
 
-## 3. Wiki Page Types
+## III. Wiki Page Types
 
-### Entity Pages
+### Entity pages
 
 **One page per mental model**, not one page per person.
 
@@ -87,64 +87,64 @@ verification:
   exclusive: false
   domains: [investment decisions, risk management, product design]
 relations:
-  - target: misjudgment_psychology
+  - target: psychology-of-misjudgment
     type: derived_from
 ---
 
 ## Model Description
-Facing "how to succeed", first think "how to ensure failure".
+Facing "how to succeed", first ask "how to guarantee failure".
 
 ## Source Evidence
-- Writings: Mentioned X times in "Poor Charlie's Almanack" ([[2026-04-06-writings]])
-- Decisions: Actually applied in Y event ([[2026-04-06-decisions]])
+- Writings: mentioned X times in Poor Charlie's Almanack ([[2026-04-06-writings]])
+- Decisions: actually applied in event Y ([[2026-04-06-decisions]])
 
-## Application
-Given any goal G, first list all paths leading to ~G, eliminate one by one.
+## How to Apply
+Given any goal G, first enumerate every path leading to ~G, then avoid each one.
 
 ## Limitations
-Tends toward conservatism, may miss opportunities requiring frontal assault.
+Biased toward conservatism; may miss opportunities that require a frontal assault.
 ```
 
-The person also has an overview entity page (`entities/{person-slug}.md`), linking to all mental models and concept pages.
+The person also gets one overview entity page (`entities/{person-slug}.md`) linking to all mental-model and concept pages.
 
-### Concept Pages
+### Concept pages
 
-For following content:
+Used for the following content:
 
-| Content | Page Example |
-|---------|-------------|
-| Decision heuristics (rules not passing triple verification) | `concepts/heuristic-{name}.md` |
+| Content | Page example |
+|------|---------|
+| Decision heuristics (rules that failed triple verification) | `concepts/heuristic-{name}.md` |
 | Values and anti-patterns | `concepts/values.md`, `concepts/anti-patterns.md` |
 | Expression DNA | `concepts/expression-dna.md` |
 | Core tensions | `concepts/tension-{name}.md` |
-| Intellectual lineage (influence/influenced relationships) | `concepts/intellectual-lineage.md` |
+| Intellectual lineage (influenced / influenced-by relations) | `concepts/intellectual-lineage.md` |
 | Honest boundaries (what this framework cannot do) | `concepts/honest-boundaries.md` |
 
-### Source Pages
+### Source pages
 
-One source page per collection dimension (6 total), faithful summary of raw materials, not modified after creation.
-
----
-
-## 4. Ingest Sequence Suggestion
-
-No strict sequence required, but recommended:
-
-1. **Writings + Timeline** first—establish basic framework and chronological context
-2. **Conversations + Decisions** supplement—capture spontaneous thinking and real behavior
-3. **Expression DNA + External Views** finalize—quantify style, introduce external calibration
-
-Check after each ingest: Do existing pages need confidence updates, are there new conflicts.
+One source page per collection dimension (6 in total) — a faithful digest of the raw material, never modified after creation.
 
 ---
 
-## 5. Quality Standards
+## IV. Suggested Ingest Order
 
-| Check Item | Pass Criteria |
-|------------|---------------|
-| Mental model count | 3-7, each with >=2 different domain evidences |
-| Limitations per model | Clearly write failure conditions |
-| Expression DNA | Complete statistical dimensions (sentence+style+taboo words) |
-| Primary source ratio | > 50% |
-| Conflict records | >=2 pairs of tensions, don't avoid or reconcile |
-| Honest boundaries | >=3 specific limitations, label dimensions with insufficient info |
+No strict order required, but recommended:
+
+1. **Writings + Timeline** first — establish the basic framework and chronology
+2. **Conversations + Decisions** next — capture improvised thinking and real behavior
+3. **Expression DNA + External Views** last — quantify style and bring in external calibration
+
+After each ingest, check: do existing pages need a confidence update, and have new contradictions emerged?
+
+---
+
+## V. Quality Standards
+
+| Check | Pass criterion |
+|--------|---------|
+| Number of mental models | 3-7, each with evidence from >=2 distinct domains |
+| Limitations per model | Failure conditions explicitly written |
+| Expression DNA | All measurement dimensions complete (sentence + style + taboo words) |
+| Primary-source share | > 50% |
+| Contradiction records | >=2 tensions, neither avoided nor reconciled away |
+| Honest boundaries | >=3 concrete limitations, with under-informed dimensions flagged |

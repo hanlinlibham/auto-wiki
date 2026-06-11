@@ -1,10 +1,10 @@
-"""Wiki 页面 frontmatter 的 Pydantic 校验模型。
+"""Pydantic validation models for wiki page frontmatter.
 
-用法：
-    python schema.py .wiki/my-research/
-    python schema.py .wiki/my-research/entities/alpha-corp.md
+Usage:
+    python schema.py wiki/my-research/
+    python schema.py wiki/my-research/entities/alpha-corp.md
 
-Agent 在 ingest 完成后应自动运行校验。lint 操作也会调用。
+The Agent should run validation automatically after ingest. The lint operation calls it too.
 """
 
 from __future__ import annotations
@@ -19,14 +19,16 @@ import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
-# ── 枚举 ──────────────────────────────────────────────────
+# ── Enums ─────────────────────────────────────────────────
 
 class PageType(str, Enum):
     source = "source"
-    entity = "entity"
-    concept = "concept"
-    analysis = "analysis"
+    entity = "entity"          # subtype: institution | instrument | indicator
+    concept = "concept"        # mechanism / framework
+    event = "event"            # T4 event
+    analysis = "analysis"      # derived view / research topic
     mental_model = "mental-model"
+    ontology = "ontology"      # domain ontology contract page (_ontology.md)
 
 
 class Confidence(str, Enum):
@@ -45,17 +47,17 @@ class SourceType(str, Enum):
     oral = "oral"
 
 
-# ── 关系 ──────────────────────────────────────────────────
+# ── Relations ─────────────────────────────────────────────
 
 class Relation(BaseModel):
-    """页面间的类型化关系。"""
-    target: str                             # 目标页面 slug
-    type: str                               # 关系类型
+    """Typed relation between pages."""
+    target: str                             # target page slug
+    type: str                               # relation type
 
     @field_validator("type")
     @classmethod
     def known_type(cls, v: str) -> str:
-        """建议使用标准关系类型，但不强制。"""
+        """Standard relation types are recommended, but not enforced."""
         standard = {
             "part_of", "manages", "regulated_by", "competes_with",
             "implements", "derived_from", "contradicts", "influenced_by",
@@ -64,29 +66,29 @@ class Relation(BaseModel):
         if v not in standard:
             import warnings
             warnings.warn(
-                f"非标准关系类型 '{v}'（允许使用，但建议对齐标准类型：{', '.join(sorted(standard))}）",
+                f"Non-standard relation type '{v}' (allowed, but consider aligning with standard types: {', '.join(sorted(standard))})",
                 stacklevel=2,
             )
         return v
 
 
-# ── 三重验证（cognitive 类型专用）──────────────────────────
+# ── Triple verification (cognitive type only) ─────────────
 
 class MentalModelVerification(BaseModel):
-    """心智模型的三重验证结果。"""
-    cross_domain: bool = False              # 跨域复现
-    generative: bool = False                # 有生成力
-    exclusive: bool = False                 # 有排他性
-    domains: list[str] = Field(default_factory=list)  # 出现过的领域
+    """Triple-verification result for a mental model."""
+    cross_domain: bool = False              # cross-domain recurrence
+    generative: bool = False                # generative power
+    exclusive: bool = False                 # exclusivity
+    domains: list[str] = Field(default_factory=list)  # domains it appeared in
 
 
-# ── 页面基类 ──────────────────────────────────────────────
+# ── Page base classes ─────────────────────────────────────
 
 class BasePage(BaseModel):
-    """所有页面的公共字段。"""
+    """Fields common to all pages."""
     title: str
     type: PageType
-    created: Union[str, date]               # YYYY-MM-DD（YAML 可能解析为 date 对象）
+    created: Union[str, date]               # YYYY-MM-DD (YAML may parse it as a date object)
     updated: Union[str, date]               # YYYY-MM-DD
     sources: list[str] = Field(default_factory=list)
     confidence: Confidence = Confidence.high
@@ -94,25 +96,25 @@ class BasePage(BaseModel):
     @field_validator("created", "updated", mode="before")
     @classmethod
     def coerce_date(cls, v: Any) -> str:
-        """YAML 会把 2026-04-07 自动解析为 datetime.date，统一转为 str。"""
+        """YAML auto-parses 2026-04-07 into datetime.date; normalize to str."""
         if isinstance(v, date):
             return v.isoformat()
         if isinstance(v, str):
             try:
                 date.fromisoformat(v)
             except ValueError:
-                raise ValueError(f"日期必须为 YYYY-MM-DD 格式: {v}")
+                raise ValueError(f"Date must be in YYYY-MM-DD format: {v}")
             return v
-        raise ValueError(f"日期类型错误: {type(v)}")
+        raise ValueError(f"Invalid date type: {type(v)}")
 
 
 class SourcePage(BasePage):
-    """source 类型页面。"""
+    """source-type page."""
     type: PageType = PageType.source
     source_type: SourceType
-    source_origin: str                      # 来源出处
-    source_date: Union[str, date]           # 原始材料日期
-    source_url: str = ""                    # 来源 URL
+    source_origin: str                      # where the source comes from
+    source_date: Union[str, date]           # date of the original material
+    source_url: str = ""                    # source URL
 
     @field_validator("source_date", mode="before")
     @classmethod
@@ -124,46 +126,90 @@ class SourcePage(BasePage):
     @model_validator(mode="after")
     def sources_should_be_empty(self) -> "SourcePage":
         if self.sources:
-            raise ValueError("source 类型页面的 sources 应为空列表")
+            raise ValueError("A source-type page should have an empty sources list")
         return self
 
 
 class DataPage(BasePage):
-    """entity / concept / analysis 页面。
-    结构化数据（data/history）存在 data.db 中，不在 frontmatter。
-    relations 保留在 frontmatter（Obsidian wikilink 渲染），同时写入 data.db。
+    """entity / concept / analysis page.
+    Structured data (data/history) lives in data.db, not in frontmatter.
+    relations stay in frontmatter (Obsidian wikilink rendering) and are also written to data.db.
     """
     relations: list[Relation] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def sources_not_empty(self) -> "DataPage":
         if self.type != PageType.source and not self.sources:
-            raise ValueError(f"{self.type.value} 类型页面的 sources 不能为空")
+            raise ValueError(f"A {self.type.value}-type page must have non-empty sources")
         return self
 
 
 class MentalModelPage(BasePage):
-    """mental-model 类型页面（cognitive wiki 专用）。"""
+    """mental-model page (cognitive wikis only)."""
     type: PageType = PageType.mental_model
     verification: Optional[MentalModelVerification] = None
     relations: list[Relation] = Field(default_factory=list)
 
 
-# ── 解析与校验 ────────────────────────────────────────────
+class EntityPage(DataPage):
+    """entity page (institution/instrument/indicator). Refined via subtype; temporal fields optional (written to data.db)."""
+    type: PageType = PageType.entity
+    subtype: Optional[str] = None             # institution | instrument | indicator
+    aliases: list[str] = Field(default_factory=list)
+
+
+class ConceptPage(DataPage):
+    """concept (mechanism/framework) page. T2 durable logic uses durability/preconditions/falsifiable_by."""
+    type: PageType = PageType.concept
+    durability: Optional[str] = None          # high | medium | low
+    preconditions: list[str] = Field(default_factory=list)
+    falsifiable_by: list[str] = Field(default_factory=list)
+    is_current: bool = True
+    valid_to: Optional[Union[str, date]] = None
+
+
+class EventPage(BasePage):
+    """event page (T4). Append-only; records the stamper of state switches."""
+    type: PageType = PageType.event
+    event_date: Union[str, date]
+    actor: Optional[str] = None
+    relations: list[Relation] = Field(default_factory=list)
+
+    @field_validator("event_date", mode="before")
+    @classmethod
+    def coerce_event_date(cls, v: Any) -> str:
+        if isinstance(v, date):
+            return v.isoformat()
+        return v
+
+
+# ── Parsing & validation ──────────────────────────────────
 
 def parse_frontmatter(path: Path) -> dict[str, Any]:
-    """从 markdown 文件中提取 YAML frontmatter。"""
+    """Extract the YAML frontmatter from a markdown file."""
     text = path.read_text(encoding="utf-8")
     if not text.startswith("---"):
-        raise ValueError(f"页面缺少 YAML frontmatter: {path}")
+        raise ValueError(f"Page is missing YAML frontmatter: {path}")
     parts = text.split("---", 2)
     if len(parts) < 3:
-        raise ValueError(f"YAML frontmatter 格式错误: {path}")
+        raise ValueError(f"Malformed YAML frontmatter: {path}")
     return yaml.safe_load(parts[1]) or {}
 
 
 def validate_page(path: Path) -> tuple[bool, str]:
-    """校验单个页面。返回 (通过?, 消息)。"""
+    """Validate a single page. Returns (passed?, message)."""
+    # Folder notes (type starts with _) are navigation aids, skip validation
+    raw = path.read_text(encoding="utf-8")
+    if raw.startswith("---"):
+        parts = raw.split("---", 2)
+        if len(parts) >= 3:
+            try:
+                _fm = yaml.safe_load(parts[1]) or {}
+                if str(_fm.get("type", "")).startswith("_"):
+                    return True, "OK (folder note, skipped)"
+            except Exception:
+                pass
+
     try:
         fm = parse_frontmatter(path)
     except Exception as e:
@@ -172,38 +218,49 @@ def validate_page(path: Path) -> tuple[bool, str]:
     page_type = fm.get("type", "")
     warnings_list: list[str] = []
 
-    # data/history 应在 data.db 中，不在 frontmatter
+    # data/history belong in data.db, not in frontmatter
     if "data" in fm and fm["data"]:
-        warnings_list.append("MIGRATE: frontmatter 中有 data 字段，应迁移到 data.db（python store.py init）")
+        warnings_list.append("MIGRATE: frontmatter has a data field; migrate it to data.db (python store.py init)")
     if "history" in fm and fm["history"]:
-        warnings_list.append("MIGRATE: frontmatter 中有 history 字段，应迁移到 data.db")
+        warnings_list.append("MIGRATE: frontmatter has a history field; migrate it to data.db")
 
-    # 从 fm 中移除 data/history 避免 Pydantic 报错（模型已不包含这些字段）
+    # Strip data/history from fm to avoid Pydantic errors (the models no longer include these fields)
     fm_clean = {k: v for k, v in fm.items() if k not in ("data", "history")}
 
     try:
-        if page_type == "source":
+        if page_type == "ontology":
+            return True, "OK (ontology contract, skipped)"
+        elif page_type == "source":
             SourcePage(**fm_clean)
         elif page_type == "mental-model":
             MentalModelPage(**fm_clean)
-        elif page_type in ("entity", "concept", "analysis"):
+        elif page_type == "event":
+            EventPage(**fm_clean)
+        elif page_type == "entity":
+            EntityPage(**fm_clean)
+        elif page_type == "concept":
+            ConceptPage(**fm_clean)
+        elif page_type == "analysis":
             DataPage(**fm_clean)
         else:
             return False, f"UNKNOWN TYPE: {page_type}"
         if warnings_list:
-            return True, "OK (⚠️ " + "; ".join(warnings_list) + ")"
+            return True, "OK ( " + "; ".join(warnings_list) + ")"
         return True, "OK"
     except Exception as e:
         return False, f"VALIDATION ERROR: {e}"
 
 
+def _node_subdirs(wiki_dir: Path) -> list[Path]:
+    """Domain-agnostic: scan every non-hidden subdirectory under the wiki (institutions/instruments/indicators/mechanisms/events/analyses/sources, or any other naming)."""
+    return sorted(p for p in wiki_dir.iterdir()
+                  if p.is_dir() and not p.name.startswith(".") and not p.name.startswith("_"))
+
+
 def validate_wiki(wiki_dir: Path) -> list[tuple[str, bool, str]]:
-    """校验整个 wiki 目录。返回 [(文件名, 通过?, 消息)]。"""
+    """Validate the entire wiki directory. Returns [(filename, passed?, message)]."""
     results = []
-    for subdir in ["sources", "entities", "concepts", "analyses", "mental-models"]:
-        d = wiki_dir / subdir
-        if not d.exists():
-            continue
+    for d in _node_subdirs(wiki_dir):
         for f in sorted(d.glob("*.md")):
             if f.name.startswith("_"):
                 continue
@@ -213,24 +270,24 @@ def validate_wiki(wiki_dir: Path) -> list[tuple[str, bool, str]]:
     return results
 
 
-# ── Report 数据提取 ──────────────────────────────────────
+# ── Report data extraction ────────────────────────────────
 
 import json
 import re
 from collections import Counter
 
 def _page_body(path: Path) -> str:
-    """读取 markdown 正文（frontmatter 之后的部分）。"""
+    """Read the markdown body (the part after the frontmatter)."""
     text = path.read_text(encoding="utf-8")
     parts = text.split("---", 2)
     return parts[2] if len(parts) >= 3 else ""
 
 def _extract_wikilinks(body: str) -> list[str]:
-    """提取正文中的 [[slug]] 或 [[slug|display]] 链接。"""
+    """Extract [[slug]] or [[slug|display]] links from the body."""
     return re.findall(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]", body)
 
 def collect_report_data(wiki_dir: Path) -> dict[str, Any]:
-    """扫描 wiki 目录，提取完整的报告数据。"""
+    """Scan the wiki directory and extract the full report data."""
     meta_path = wiki_dir / "meta.yaml"
     meta = {}
     if meta_path.exists():
@@ -246,11 +303,8 @@ def collect_report_data(wiki_dir: Path) -> dict[str, Any]:
     page_slugs: set[str] = set()
     freshness: list[dict] = []
 
-    subdirs = ["sources", "entities", "concepts", "analyses", "mental-models"]
-    for subdir in subdirs:
-        d = wiki_dir / subdir
-        if not d.exists():
-            continue
+    # Domain-agnostic: scan all node subdirectories (institutions/instruments/indicators/mechanisms/events/analyses/sources, or any other naming)
+    for d in _node_subdirs(wiki_dir):
         for f in sorted(d.glob("*.md")):
             if f.name.startswith("_"):
                 continue
@@ -264,6 +318,7 @@ def collect_report_data(wiki_dir: Path) -> dict[str, Any]:
                 continue
 
             page_type = fm.get("type", "unknown")
+            subtype = fm.get("subtype", "")
             confidence = fm.get("confidence", "unknown")
             title = fm.get("title", slug)
             updated = str(fm.get("updated", ""))
@@ -274,19 +329,27 @@ def collect_report_data(wiki_dir: Path) -> dict[str, Any]:
             if confidence == "contested":
                 contested_pages.append(rel_path)
 
-            # 节点颜色按类型
-            color_map = {
-                "entity": "#4A90D9",
-                "concept": "#7B68EE",
-                "source": "#50C878",
-                "analysis": "#FF8C00",
-                "mental-model": "#E91E63",
+            # Node colors: entities by subtype (institution red / instrument blue / indicator teal), the rest by type
+            subtype_color = {
+                "institution": "#E5484D",   # institution: red
+                "instrument": "#4A90D9",    # instrument: blue
+                "indicator": "#16A3A3",     # indicator: teal
             }
+            type_color = {
+                "concept": "#2DA44E",       # mechanism: green
+                "event": "#D9A406",         # event: yellow
+                "analysis": "#8B8B8B",      # analysis: gray
+                "source": "#B8B8B8",        # source: light gray
+                "mental-model": "#E91E63",
+                "entity": "#4A90D9",
+            }
+            color = subtype_color.get(subtype) or type_color.get(page_type, "#999")
             nodes.append({
                 "id": slug,
                 "label": title,
                 "type": page_type,
-                "color": color_map.get(page_type, "#999"),
+                "subtype": subtype,
+                "color": color,
                 "confidence": confidence,
                 "updated": updated,
                 "path": rel_path,
@@ -294,7 +357,7 @@ def collect_report_data(wiki_dir: Path) -> dict[str, Any]:
 
             freshness.append({"slug": slug, "updated": updated, "type": page_type})
 
-            # 关系 → 边
+            # Relations → edges
             for rel in fm.get("relations", []):
                 target = rel.get("target", "")
                 rel_type = rel.get("type", "")
@@ -305,12 +368,12 @@ def collect_report_data(wiki_dir: Path) -> dict[str, Any]:
                         "label": rel_type,
                     })
 
-            # 正文 wikilinks → 入链统计
+            # Body wikilinks → inlink stats
             body = _page_body(f)
             for linked_slug in _extract_wikilinks(body):
                 inlink_counts[linked_slug] += 1
 
-    # 从 data.db 读取结构化数据（唯一数据源）
+    # Read structured data from data.db (the single data source)
     db_path = wiki_dir / "data.db"
     if db_path.exists():
         import sqlite3 as _sqlite3
@@ -327,13 +390,13 @@ def collect_report_data(wiki_dir: Path) -> dict[str, Any]:
                 "source": r["source_slug"], "verified": r["verified"],
                 "confidence": r["confidence"] or "high",
             })
-        # DB relations 补充 frontmatter edges
+        # DB relations supplement frontmatter edges
         edge_set = {(e["from"], e["to"], e["label"]) for e in edges}
         for r in _conn.execute("SELECT * FROM relations").fetchall():
             key = (r["from_slug"], r["to_slug"], r["type"])
             if key not in edge_set:
                 edges.append({"from": r["from_slug"], "to": r["to_slug"], "label": r["type"]})
-        # DB contested 补充
+        # DB contested supplement
         contested_set = set(contested_pages)
         for r in _conn.execute("SELECT DISTINCT page_slug FROM data_points WHERE confidence='contested'").fetchall():
             for n in nodes:
@@ -342,11 +405,11 @@ def collect_report_data(wiki_dir: Path) -> dict[str, Any]:
                     contested_set.add(n["path"])
         _conn.close()
 
-    # frontmatter relations 也算入链
+    # frontmatter relations also count as inlinks
     for edge in edges:
         inlink_counts[edge["to"]] += 1
 
-    # 覆盖度分析
+    # Coverage analysis
     coverage_gaps: list[dict] = []
     for slug in page_slugs:
         inlinks = inlink_counts.get(slug, 0)
@@ -357,17 +420,27 @@ def collect_report_data(wiki_dir: Path) -> dict[str, Any]:
             coverage_gaps.append({
                 "slug": slug,
                 "issue": "orphan",
-                "detail": f"零入链（无其他页面引用）",
+                "detail": f"zero inlinks (no other page references it)",
             })
 
-    # 被大量引用但内容可能薄的页面（通过 wikilink 被引用但不在 page_slugs 中）
+    # Heavily referenced pages that may be thin (referenced via wikilink but absent from page_slugs)
     for linked, count in inlink_counts.most_common():
         if linked not in page_slugs and count >= 2:
             coverage_gaps.append({
                 "slug": linked,
                 "issue": "missing",
-                "detail": f"被引用 {count} 次但页面不存在",
+                "detail": f"referenced {count} times but the page does not exist",
             })
+
+    # Calibrated layout: deterministic coordinates produced by position_encoding.py (optional)
+    positions = None
+    pos_path = wiki_dir / "_positions.json"
+    if pos_path.exists():
+        import json as _json
+        try:
+            positions = _json.loads(pos_path.read_text(encoding="utf-8")).get("positions")
+        except Exception:
+            positions = None
 
     return {
         "name": meta.get("name", wiki_dir.name),
@@ -383,11 +456,12 @@ def collect_report_data(wiki_dir: Path) -> dict[str, Any]:
         "data_rows": data_rows,
         "freshness": freshness,
         "coverage_gaps": coverage_gaps,
+        "positions": positions,
     }
 
 
 REPORT_HTML_TEMPLATE = r"""<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -395,7 +469,7 @@ REPORT_HTML_TEMPLATE = r"""<!DOCTYPE html>
 <script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, "Noto Sans SC", sans-serif; background: #f0f2f5; color: #1a1a1a; height: 100vh; overflow: hidden; }
+  body { font-family: -apple-system, "Segoe UI", sans-serif; background: #f0f2f5; color: #1a1a1a; height: 100vh; overflow: hidden; }
 
   .layout { display: flex; height: 100vh; }
 
@@ -526,7 +600,7 @@ const cc = [
 cardsEl.innerHTML = cc.map(c => `<div class="card"><div class="num">${c.num}</div><div class="label">${c.label}</div></div>`).join('');
 
 // ── Legend ──
-const cm = { entity:'#4A90D9', concept:'#7B68EE', source:'#50C878', analysis:'#FF8C00', 'mental-model':'#E91E63' };
+const cm = { 'institution':'#E5484D', 'instrument':'#4A90D9', 'indicator':'#16A3A3', 'mechanism':'#2DA44E', 'event':'#D9A406', 'analysis':'#8B8B8B', 'source':'#B8B8B8' };
 document.getElementById('legend').innerHTML = Object.entries(cm).map(([t,c]) =>
   `<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${t}</div>`).join('');
 
@@ -545,7 +619,7 @@ if (DATA.nodes.length > 0) {
     return {
       id: n.id, label: n.label,
       color: { background: n.color, border: n.color, highlight: { background: '#fff', border: n.color } },
-      font: { color: '#333', size: Math.max(12, sz * 0.65), face: '-apple-system, "Noto Sans SC", sans-serif' },
+      font: { color: '#333', size: Math.max(12, sz * 0.65), face: '-apple-system, "Segoe UI", sans-serif' },
       shape: 'dot', size: sz,
     };
   });
@@ -574,15 +648,40 @@ if (DATA.nodes.length > 0) {
     smooth: { type:'curvedCW', roundness: 0.18 },
   }));
 
+  // ── Calibrated layout: deterministic coordinates from position_encoding.py (y = ontology layer, x = spectral coordinate) ──
+  const PE = DATA.positions || null;
+  let calibrated = !!PE;
+  const FORCE_PHYSICS = {
+    solver: 'forceAtlas2Based',
+    forceAtlas2Based: { gravitationalConstant: -80, springLength: 200, springConstant: 0.04, damping: 0.6 },
+    stabilization: { iterations: 150 },
+  };
+  if (PE) graphNodes.forEach(n => { const p = PE[n.id]; if (p) { n.x = p.x; n.y = p.y; } });
+
   network = new vis.Network(document.getElementById('graph'), { nodes: graphNodes, edges: graphEdges }, {
-    physics: {
-      solver: 'forceAtlas2Based',
-      forceAtlas2Based: { gravitationalConstant: -80, springLength: 200, springConstant: 0.04, damping: 0.6 },
-      stabilization: { iterations: 150 },
-    },
+    physics: calibrated ? false : FORCE_PHYSICS,
     interaction: { hover: true, tooltipDelay: 150, zoomView: true, navigationButtons: false },
-    layout: { improvedLayout: true },
+    layout: { improvedLayout: !calibrated },
   });
+  if (calibrated) network.fit();
+
+  if (PE) {
+    const layoutBtn = document.createElement('button');
+    layoutBtn.textContent = 'Layout: calibrated';
+    layoutBtn.style.cssText = 'position:absolute;top:8px;right:8px;z-index:5;padding:4px 10px;font-size:11px;color:#555;background:#fff;border:1px solid #d0d0d0;border-radius:4px;cursor:pointer;';
+    document.getElementById('graph').appendChild(layoutBtn);
+    layoutBtn.onclick = () => {
+      calibrated = !calibrated;
+      layoutBtn.textContent = calibrated ? 'Layout: calibrated' : 'Layout: force-directed';
+      if (calibrated) {
+        network.setOptions({ physics: false });
+        Object.entries(PE).forEach(([id, p]) => { if (nodeIds.has(id)) network.moveNode(id, p.x, p.y); });
+        network.fit({ animation: { duration: 300 } });
+      } else {
+        network.setOptions({ physics: FORCE_PHYSICS });
+      }
+    };
+  }
 
   // fit after stabilize
   network.on('stabilized', () => { network.fit({ animation: { duration: 300 } }); });
@@ -674,7 +773,7 @@ if (DATA.coverage_gaps.length) {
 
 
 def generate_report(wiki_dir: Path) -> Path:
-    """生成 wiki 可视化报告 HTML。返回输出文件路径。"""
+    """Generate the wiki visual report HTML. Returns the output file path."""
     data = collect_report_data(wiki_dir)
     html = REPORT_HTML_TEMPLATE
     html = html.replace("{{WIKI_NAME}}", data["name"])
@@ -698,7 +797,7 @@ def main():
         print("  python schema.py --report <wiki_dir>   — generate visual report")
         sys.exit(1)
 
-    # --report 模式
+    # --report mode
     if sys.argv[1] == "--report":
         if len(sys.argv) < 3:
             print("Usage: python schema.py --report <wiki_dir>")
@@ -715,7 +814,7 @@ def main():
 
     if target.is_file():
         ok, msg = validate_page(target)
-        status = "✅" if ok else "❌"
+        status = "" if ok else ""
         print(f"{status} {target.name}: {msg}")
         sys.exit(0 if ok else 1)
 
@@ -733,19 +832,19 @@ def main():
         print(f"{'='*60}\n")
 
         for name, ok, msg in results:
-            status = "✅" if ok else "❌"
+            status = "" if ok else ""
             print(f"  {status} {name}")
             if not ok:
-                # 缩进显示错误详情
+                # Indented error details
                 for line in str(msg).split("\n"):
                     print(f"     {line}")
 
         print(f"\n{'─'*60}")
         print(f"  Total: {len(results)} | Passed: {passed} | Failed: {failed}")
         if failed == 0:
-            print("  Result: ALL PASSED ✅")
+            print("  Result: ALL PASSED ")
         else:
-            print(f"  Result: {failed} FAILED ❌")
+            print(f"  Result: {failed} FAILED ")
         print(f"{'─'*60}\n")
 
         sys.exit(0 if failed == 0 else 1)
