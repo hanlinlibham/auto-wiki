@@ -284,8 +284,8 @@ This project builds on ideas and inspiration from:
 
 | Version | Directory | Description |
 |---------|-----------|-------------|
-| Chinese | `skill/auto-wiki-cn/` | Agent protocols in Chinese. Wiki output in Chinese. |
-| English | `skill/auto-wiki-en/` | Agent protocols in English. Wiki output in English. |
+| Chinese | `skill/auto-wiki-cn/` | **v0.3.0** — domain-based layout, six-tier time model, per-domain ontology contracts. |
+| English | `skill/auto-wiki-en/` | v0.2.0 — pending re-translation of the v0.3 protocols. |
 
 Each version is fully self-contained — copy one directory and it works standalone.
 

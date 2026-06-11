@@ -1,47 +1,49 @@
 # Wiki 扩容方案
 
-> 默认模式（grep + index.md）适用于 < 500 页。超过后启用 SQLite 索引层。
+> 默认模式（grep + hub 页面）适用于 < 500 页。超过后启用 SQLite 索引层。
 > 零额外依赖——Python 3 自带 sqlite3 + FTS5。
 
 ## 三档检索策略
 
 | 档位 | 页面数 | 检索方式 | 触发条件 |
 |------|--------|---------|---------|
-| L0 | < 50 | 读 index.md + 直接读页面 | 默认 |
-| L1 | 50-500 | 分层 index + grep 关键词 | 页面数 > 50 时自动切换 |
+| L0 | < 50 | 读 hub 页面 + 直接读页面 | 默认 |
+| L1 | 50-500 | 分层 hub 页面 + grep 关键词 | 页面数 > 50 时自动切换 |
 | L2 | 500+ | SQLite FTS5 + BM25 排序 | 页面数 > 500 或用户手动启用 |
 
 ---
 
 ## L1: 分层索引（50-500 页）
 
-当页面数超过 50，index.md 拆分为分层结构：
+当页面数超过 50，hub 页面拆分为分层结构：
 
 ```
-.wiki/{主题}/
-├── index.md              # 顶层索引（只有分类摘要 + 链接到子索引）
-├── entities/
-│   └── _index.md         # 实体子索引（该目录下所有页面的标题+一句话）
-├── concepts/
-│   └── _index.md         # 概念子索引
-├── sources/
-│   └── _index.md         # 源文件子索引
-└── analyses/
-    └── _index.md         # 分析子索引
+wiki/{domain}/
+├── {领域中文名}.md       # 顶层 hub（只有分类摘要 + 链接到子索引）
+├── 机构/  _index.md      # 机构子索引（该目录下所有页面的标题+一句话）
+├── 工具/  _index.md      # 工具子索引
+├── 指标/  _index.md      # 指标子索引
+├── 机制/  _index.md      # 机制子索引
+├── 事件/  _index.md      # 事件子索引
+├── 分析/  _index.md      # 分析子索引
+└── 来源/  _index.md      # 来源子索引
 ```
 
-**顶层 index.md 变为导航页**：
+**顶层 hub 页面变为导航页**：
 
 ```markdown
-# {主题} Wiki Index
+# {领域中文名} Wiki Index
 
 > 287 pages | Last updated: 2026-04-06
 
 ## Overview
-- Sources: 45 篇 → [sources/_index.md]
-- Entities: 120 个 → [entities/_index.md]
-- Concepts: 87 个 → [concepts/_index.md]
-- Analyses: 35 篇 → [analyses/_index.md]
+- 机构: 12 → [机构/_index.md]
+- 工具: 40 → [工具/_index.md]
+- 指标: 60 → [指标/_index.md]
+- 机制: 35 → [机制/_index.md]
+- 事件: 50 → [事件/_index.md]
+- 分析: 35 → [分析/_index.md]
+- 来源: 55 → [来源/_index.md]
 
 ## 最近 ingest（最近 10 条）
 - 2026-04-06: hrss-policy → 更新 8 页
@@ -54,7 +56,7 @@
 ...
 ```
 
-Agent 查询时先读顶层 index 定位分类，再读对应子索引定位具体页面，避免一次加载全部。
+Agent 查询时先读顶层 hub 页面定位分类，再读对应子索引定位具体页面，避免一次加载全部。
 
 ---
 
@@ -65,9 +67,9 @@ Agent 查询时先读顶层 index 定位分类，再读对应子索引定位具�
 Wiki 页面（markdown）仍然是数据源头。SQLite 只是索引——丢了可以从页面重建。
 
 ```
-.wiki/{主题}/
+wiki/{主题}/
 ├── search.db            # SQLite 索引文件（自动生成，可重建）
-├── index.md             # 保留（给人浏览用）
+├── {主题中文名}.md       # 保留（给人浏览用）
 ├── meta.yaml
 └── ...
 ```
@@ -234,10 +236,10 @@ if __name__ == '__main__':
 
 ```bash
 # 建索引
-python3 build_index.py .wiki/enterprise-annuity/
+python3 build_index.py wiki/enterprise-annuity/
 
 # BM25 搜索
-python3 search.py .wiki/enterprise-annuity/search.db "受托人 市场份额"
+python3 search.py wiki/enterprise-annuity/search.db "受托人 市场份额"
 
 # 输出
 # [entity] Alpha Corp 养老金业务 (alpha-corp) confidence=high rank=-3.42
@@ -307,7 +309,7 @@ FROM pages GROUP BY type;
 
 | 信号 | 建议 |
 |------|------|
-| index.md 超过 200 行 | 启用 L1 分层索引 |
+| hub 页面超过 200 行 | 启用 L1 分层索引 |
 | grep 搜索 > 5 秒 | 启用 L2 SQLite 索引 |
 | 页面数 > 500 | 必须启用 L2 |
 | 需要反向链接查询 | 启用 L2（links 表） |

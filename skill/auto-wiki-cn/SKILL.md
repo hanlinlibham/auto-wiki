@@ -1,6 +1,6 @@
 ---
 name: auto-wiki
-version: 0.2.0
+version: 0.3.0
 description: |
   知识编译器：教 Agent 把源文件增量编译进持久化 wiki，实现跨会话知识积累。
   运行时依赖：Python 3.8+（标准库 + pydantic）。可选增强：WebSearch（主动搜索）、外部 MCP 校验器（逻辑校验）。
@@ -40,12 +40,12 @@ description: |
 
 | 依赖 | 必需？ | 说明 |
 |------|--------|------|
-| **Python 3.8+** | ✅ 必需 | `schema.py`（frontmatter 校验）、`store.py`（SQLite 数据管理）、`build_index.py`（FTS5 索引）均为 Python 脚本。仅用标准库（`sqlite3`、`json`、`pathlib`）+ `pydantic` |
-| **pydantic** | ✅ 必需 | `schema.py` 的 frontmatter 校验依赖。`pip install pydantic` |
-| **文件系统写入** | ✅ 必需 | 在 `.wiki/{topic}/` 下创建和编辑 Markdown、SQLite、`.obsidian/` 配置。**首次创建 `.wiki/` 时会向用户确认位置** |
-| **WebSearch / WebFetch** | ❌ 可选 | 主动模式（Agent 自主搜索材料）需要。被动模式（用户提供文件）不需要 |
-| **外部校验器（MCP）** | ❌ 可选 | 仅当 wiki 声明了 validator 时 lint 会尝试调用。不可达时静默跳过，零影响。**不需要用户提供任何凭证**——`Mcp-Session-Id` 是标准 MCP 协议的会话握手，由 Agent 自动完成 |
-| **搜索类 MCP** | ❌ 可选 | deep-dive 和主动 ingest 可用域数据 MCP 增强搜索质量。没有时退化为 WebSearch |
+| **Python 3.8+** | 必需 | `schema.py`（frontmatter 校验）、`store.py`（SQLite 数据管理）、`build_index.py`（FTS5 索引）均为 Python 脚本。仅用标准库（`sqlite3`、`json`、`pathlib`）+ `pydantic` |
+| **pydantic** | 必需 | `schema.py` 的 frontmatter 校验依赖。`pip install pydantic` |
+| **文件系统写入** | 必需 | 在 `wiki/{topic}/` 下创建和编辑 Markdown、SQLite、`.obsidian/` 配置。**首次创建 `wiki/` 时会向用户确认位置** |
+| **WebSearch / WebFetch** | 可选 | 主动模式（Agent 自主搜索材料）需要。被动模式（用户提供文件）不需要 |
+| **外部校验器（MCP）** | 可选 | 仅当 wiki 声明了 validator 时 lint 会尝试调用。不可达时静默跳过，零影响。**不需要用户提供任何凭证**——`Mcp-Session-Id` 是标准 MCP 协议的会话握手，由 Agent 自动完成 |
+| **搜索类 MCP** | 可选 | deep-dive 和主动 ingest 可用域数据 MCP 增强搜索质量。没有时退化为 WebSearch |
 
 > **核心承诺**：被动模式（用户提供文件 → Agent 编译）只需要 Python 3 + 文件读写，零网络依赖。所有网络调用都是可选增强，且会在首次使用时通过环境检查告知用户。
 
@@ -53,14 +53,14 @@ description: |
 
 ```
 用户: /auto-wiki recall personal-pension
-Agent: [扫描 .wiki/personal-pension/ → 读 index.md → 加载 data.db 摘要]
+Agent: [扫描 wiki/personal-pension/ → 读 hub 页面（{主题中文名}.md）→ 加载 data.db 摘要]
 Agent: 已进入 recall 模式。当前 wiki：22 页 / 8 数据点 / 2 处 contested。
        接下来的问题我会先查 wiki 再回答。
 
 用户: 参与率低的原因是什么？
 Agent: [读 wiki 中 enrollment-friction、tax-incentive-effect 等页面]
 Agent: 根据 wiki 积累的 6 篇来源...（引用具体页面和数据）
-       ⚠️ 注意：税优激励效果存在矛盾（77.8% vs 25%），详见 [[participation-willingness]]
+        注意：税优激励效果存在矛盾（77.8% vs 25%），详见 [[participation-willingness]]
 ```
 
 ## 核心理念
@@ -77,7 +77,7 @@ Agent 每天帮你做研究、写报告、拉数据——但做完就忘。下�
 |------|------|-------------|
 | **recall** | `recall` / `recall {topic}` | 加载 wiki 上下文，后续所有问题先查 wiki 再回答 |
 | **ingest** | 用户提供源文件或文本 | 读源文件 → 搜索已有 wiki → 比较新旧 → 更新/创建页面 → 更新索引 |
-| **query** | 用户提问（单次） | 读 index → 找相关页面 → 综合回答 → 有价值的分析可归档 |
+| **query** | 用户提问（单次） | 读 hub 页面 → 找相关页面 → 综合回答 → 有价值的分析可归档 |
 | **lint** | 用户说"检查 wiki" | 扫描全部页面 → 合并重复 → 归档过时 → 报告矛盾和健康度 |
 | **deep-dive** | `deep-dive` / "上强度" | 运行 Coverage lint → 展示缺口报告 → 用户确认 → 搜索 + ingest 填补缺口 |
 
@@ -95,10 +95,10 @@ recall 模式 vs query 的区别：query 是单次操作（问一个问题，查
 
 Agent 执行：
 
-1. **扫描 `.wiki/` 目录**，列出可用的 wiki 主题
+1. **扫描 `wiki/` 目录**，列出可用的 wiki 主题
 2. 如果用户指定了主题 → 加载该 wiki；如果没指定 → 列出可选主题让用户选
-3. **读 index.md** → 获取全部页面列表和结构
-4. **读 data.db 摘要** → `python references/store.py dump .wiki/{topic}/`，获取数据点数、关系数、contested 数
+3. **读 hub 页面**（`{主题中文名}.md`，即 wiki 根目录下与 meta.yaml `name` 对应的主页面）→ 获取全部页面列表和结构
+4. **读 data.db 摘要** → `python references/store.py dump wiki/{topic}/`，获取数据点数、关系数、contested 数
 5. **向用户报告**：
    ```
    已进入recall 模式：{主题}
@@ -112,7 +112,7 @@ Agent 执行：
 进入recall 模式后，每次收到用户问题：
 
 1. **从问题中提取关键词**（实体名、概念名、指标名）
-2. **在 index.md 中匹配**相关页面（标题 + 描述）
+2. **在 hub 页面中匹配**相关页面（标题 + 描述）
 3. **在 data.db 中查询**相关数据点：
    ```sql
    SELECT * FROM data_points WHERE field LIKE '%关键词%' OR page_slug LIKE '%关键词%'
@@ -133,29 +133,30 @@ Agent 执行：
 
 ## 执行流程
 
-### Phase 0: 识别研究主题与本体类型
+### Phase 0: 识别目标领域与本体类型
 
-收到用户输入后，判断三件事：**操作类型**、**目标 wiki**、**本体类型**。
+收到用户输入后，判断三件事：**操作类型**、**目标领域 wiki**、**本体类型**。
 
-| 用户输入 | 操作 | 目标 wiki | 本体类型 |
+> **wiki 按领域(domain)组织，不按研究课题(topic)。** 研究课题（如"美联储加息周期"）降级为 `{domain}/分析/` 下一页，不再各自开 wiki。先识别这条知识属于哪个领域（macro / credit / …），再落到该领域目录。详见 `references/storage-spec.md`。
+
+| 用户输入 | 操作 | 目标领域 wiki | 本体类型 |
 |---------|------|-----------|---------|
-| "帮我整理这篇研报" + 文件 | ingest | 从内容推断，或问用户 | domain |
-| "ingest 到个人养老金" + 文件 | ingest | personal-pension | domain |
+| "帮我整理这篇货币政策研报" + 文件 | ingest | macro | domain |
+| "ingest 到宏观" + 文件 | ingest | macro | domain |
 | "研究一下 Charlie Munger" + 材料 | ingest | charlie-munger | cognitive |
-| "个人养老金参与率怎么样" | query | 从问题推断，或问用户 | — |
-| "检查一下养老金 wiki" | lint | personal-pension | — |
+| "央行降准空间还有多少" | query | macro | — |
+| "检查一下 macro wiki" | lint | macro | — |
 
-**本体类型**决定 wiki 的页面结构和采集策略：
+**本体类型**决定 wiki 的节点类型与采集策略：
 
-| 本体类型 | 研究对象 | 页面侧重 | 参考 |
+| 本体类型 | 研究对象 | 节点类型 | 权威契约 / 参考 |
 |---------|---------|---------|------|
-| **cognitive** | 人（思维模型、决策方式） | MentalModel, Heuristic, Value, StylePattern | `references/ontology-types/cognitive.md` |
-| **domain** | 领域（机构、制度、指标） | Entity, Concept, Metric | `references/ontology-types/domain.md` |
-| **general** | 以上都不是 | 默认 entity/concept 结构 | — |
+| **domain** | 领域（机构、工具、指标、机制、事件） | 实体(机构/工具/指标) · 概念-机制 · 事件 · 分析 · 来源 | 各领域 `wiki/{domain}/_ontology.md` + `references/ontology-types/domain.md` |
+| **cognitive** | 人（思维模型、决策方式） | mental-model · 概念 · 来源 · 分析 | `references/ontology-types/cognitive.md` |
 
-**一个 wiki 只有一种类型。** 如果研究横跨人和领域（如"Munger 的投资框架在企业年金中的应用"），分属两个 wiki，用跨 wiki query 综合回答。不要在一个 wiki 里混用 cognitive 和 domain 页面结构。
+**每个领域 wiki 的本体由它自己的 `wiki/{domain}/_ontology.md` 契约定义**（节点类型、受控关系词表、6 档时间模型、退役协议）；ingest/recall 前先读它。一个领域只用一种本体类型，不在同一领域里混用 cognitive 与 domain 结构。
 
-**如果 wiki 目录不存在**，先向用户确认创建位置（默认 `.wiki/{topic}/`，在当前仓库根目录下），然后按 `references/storage-spec.md` 创建初始结构（含 meta.yaml、index.md 模板、log.md 模板）。建议用户将 `.wiki/` 加入 `.gitignore`（如尚未添加）。
+**如果 wiki 目录不存在**，先向用户确认创建位置（默认 `wiki/{topic}/`，在当前仓库根目录下），然后按 `references/storage-spec.md` 创建初始结构（含 meta.yaml、hub 页面模板、log.md 模板）。`wiki/` 纳入 git 版本管理、**不要**加入 `.gitignore`——它必须出现在 Obsidian 图谱中（禁止用 `.wiki/` 点目录，Obsidian 会隐藏 dotfolder）。
 
 **领域种子（seed）**：如果目标领域有对应的种子文件（`seeds/{name}.md`），在 meta.yaml 中声明 `seed: {name}`。种子提供标准术语词表、关系模板和禁混规则，让 wiki 从规范化的起点开始生长。没有种子的领域，wiki 自由生长——两种路径都能跑。种子是社区可贡献的插件，任何人可以为自己的垂直领域写一个 markdown 文件。详见 `references/seed-ontologies.md`。
 
@@ -183,13 +184,13 @@ Agent 执行：
 1. **读取源文件**，提取关键信息
 2. **校验关键数据**（如有可用工具）— 详见 `references/fact-check.md`
 3. **写 source 摘要页**（`sources/{date}-{slug}.md`）
-4. **搜索 wiki 中已有的相关页面**（读 index.md，grep 关键实体名）
+4. **搜索 wiki 中已有的相关页面**（读 hub 页面，grep 关键实体名）
 5. **逐页比较新旧信息**：
    - 新信息**支持**已有结论 → 加引用，提升 confidence
    - 新信息**推翻**已有结论 → 数值写入 data.db（旧值自动进 history 表），改写正文分析
    - 新信息**矛盾**且无法判断 → 并列两种说法，confidence → `contested`
 6. **创建新页面**（仅当涉及 wiki 中没有的实体/概念）
-7. **更新 index.md + 追加 log.md**
+7. **更新 hub 页面 + 追加 log.md**
 8. **Schema 校验**——对本次创建/修改的所有页面运行 `python references/schema.py {page.md}`，确保 frontmatter 符合规范。不通过则立即修复再继续
 
 Ingest 完成后向用户报告：
@@ -205,7 +206,7 @@ Ingest 完成后向用户报告：
 
 **详细协议见 `references/query-protocol.md`。**
 
-1. 读 index.md，识别与问题相关的页面
+1. 读 hub 页面，识别与问题相关的页面
 2. 读取匹配页面 + 沿 wikilink 展开一层关联页面
 3. 基于页面内容综合回答，**引用来源页面**：
    ```
@@ -301,18 +302,19 @@ Agent: 补全完成。新建 2 页，更新 0 页，1 个缺口未能补全（�
 
 详见 `references/wiki-format.md`。简要：
 
-- 每个页面是带 frontmatter 的 markdown（title, type, created, updated, sources, confidence）
-- 5 种页面类型：source / entity / concept / analysis / mental-model
-- 用 `[[slug]]` 做页面间链接
-- index.md 是目录，log.md 是操作日志
+- 每个页面是带 frontmatter 的 markdown（title, type, created, updated, sources, confidence；实体另有 subtype/aliases，机制有 durability，事件有 event_date）
+- domain 节点类型：**实体**（subtype 机构/工具/指标）· **概念-机制** · **事件** · **分析** · **来源**（cognitive wiki 另有 mental-model）
+- 数值绝不是节点（进 data.db）；分类标签是边不是页；关系用受控词表
+- 用 `[[slug]]` 做页面间链接（中文 slug = 文件名 = wikilink = data.db 主键）
+- hub 页面以**领域中文名**命名（如 `宏观.md`），是目录页 + 图谱中心；`log.md` 是操作日志
 
 ## 本体类型参考
 
-当研究对象是**人**时，参见 `references/ontology-types/cognitive.md` 的采集策略——页面类型侧重心智模型、启发式、价值体系、表达风格。
+当研究对象是**领域**时，权威是该领域的 `wiki/{domain}/_ontology.md` 契约，采集策略见 `references/ontology-types/domain.md`——节点侧重机构/工具/指标实体、机制、事件、量化指标（数值入 data.db）。
 
-当研究对象是**领域**时，参见 `references/ontology-types/domain.md` 的采集策略——页面类型侧重机构实体、制度概念、量化指标。
+当研究对象是**人**时，参见 `references/ontology-types/cognitive.md`——节点侧重心智模型、启发式、价值体系、表达风格。
 
-两者共用同一套 wiki 基础设施（ingest/query/lint），区别仅在页面分类和采集侧重。
+两者共用同一套 wiki 基础设施（ingest/query/lint、data.db 双时态表、退役不删除），区别仅在节点分类和采集侧重。
 
 ## 垂直领域适配
 
@@ -333,7 +335,7 @@ Skill 核心是领域无关的编译引擎。垂直领域的专业性通过两�
 
 ## 不做什么
 
-- **不做向量检索**。小规模靠 index + grep，大规模靠 SQLite FTS5 + BM25（见 `references/scaling.md`）。向量检索留给平台级工具。
+- **不做向量检索**。小规模靠 hub 页面 + grep，大规模靠 SQLite FTS5 + BM25（见 `references/scaling.md`）。向量检索留给平台级工具。
 - **不做多用户协作**。wiki 目录是本地文件，一个用户一个 wiki。
 - **不替代专业数据工具**。领域数据获取用对应的 MCP/工具，本 Skill 只接住它们的产出并编译进 wiki。
 

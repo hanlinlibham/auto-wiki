@@ -7,9 +7,9 @@
 ```
 1. 扫描全部页面
    ├─ 读 meta.yaml 获取 wiki 基本信息
-   ├─ 读 index.md 获取页面列表
+   ├─ 读 hub 页面（{主题中文名}.md）获取页面列表
    ├─ 遍历 sources/ entities/ concepts/ analyses/ 目录
-   └─ 对比 index 与实际文件（发现 index 遗漏或多余的条目）
+   └─ 对比 hub 页面与实际文件（发现 hub 遗漏或多余的条目）
 
 2. 逐项检查（7 项）
    ├─ 2.1 Validation — 页面格式是否合规
@@ -21,7 +21,7 @@
    └─ 2.7 Coverage — 知识覆盖是否有明显缺口
 
 3. 执行修复（自动 + 需确认）
-   ├─ 自动修复：index 同步、断链修复、格式补全
+   ├─ 自动修复：hub 页面同步、断链修复、格式补全
    └─ 需确认：合并重复、归档过时、矛盾标注
 
 4. 输出健康报告
@@ -180,7 +180,7 @@ Lint 分两档。结构化检查可以自动跑完全量页面，语义检查需
 - confidence 分布：high 30 / medium 8 / low 2 / contested 2
 
 ### 本次修复
-- [自动] index.md 同步（新增 2 个遗漏条目）
+- [自动] hub 页面同步（新增 2 个遗漏条目）
 - [自动] 修复 1 个断链（portable-annuity → portable-annuity-scheme）
 - [需确认] 合并 alpha-corp.md 和 alpha-annuity.md（疑似重复）
 

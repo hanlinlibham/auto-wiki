@@ -1,8 +1,8 @@
 """Wiki 页面 frontmatter 的 Pydantic 校验模型。
 
 用法：
-    python schema.py .wiki/my-research/
-    python schema.py .wiki/my-research/entities/alpha-corp.md
+    python schema.py wiki/my-research/
+    python schema.py wiki/my-research/entities/alpha-corp.md
 
 Agent 在 ingest 完成后应自动运行校验。lint 操作也会调用。
 """
@@ -23,10 +23,12 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 class PageType(str, Enum):
     source = "source"
-    entity = "entity"
-    concept = "concept"
-    analysis = "analysis"
+    entity = "entity"          # subtype: institution | instrument | indicator
+    concept = "concept"        # 机制 / 框架
+    event = "event"            # T4 事件
+    analysis = "analysis"      # 派生视图 / 研究课题
     mental_model = "mental-model"
+    ontology = "ontology"      # 领域本体契约页（_ontology.md）
 
 
 class Confidence(str, Enum):
@@ -149,6 +151,38 @@ class MentalModelPage(BasePage):
     relations: list[Relation] = Field(default_factory=list)
 
 
+class EntityPage(DataPage):
+    """entity 页面（机构/工具/指标）。subtype 细分；时态字段可选（写入 data.db）。"""
+    type: PageType = PageType.entity
+    subtype: Optional[str] = None             # institution | instrument | indicator
+    aliases: list[str] = Field(default_factory=list)
+
+
+class ConceptPage(DataPage):
+    """concept（机制/框架）页面。T2 耐用逻辑用 durability/preconditions/falsifiable_by。"""
+    type: PageType = PageType.concept
+    durability: Optional[str] = None          # high | medium | low
+    preconditions: list[str] = Field(default_factory=list)
+    falsifiable_by: list[str] = Field(default_factory=list)
+    is_current: bool = True
+    valid_to: Optional[Union[str, date]] = None
+
+
+class EventPage(BasePage):
+    """event 页面（T4）。append-only，记录状态切换的盖章者。"""
+    type: PageType = PageType.event
+    event_date: Union[str, date]
+    actor: Optional[str] = None
+    relations: list[Relation] = Field(default_factory=list)
+
+    @field_validator("event_date", mode="before")
+    @classmethod
+    def coerce_event_date(cls, v: Any) -> str:
+        if isinstance(v, date):
+            return v.isoformat()
+        return v
+
+
 # ── 解析与校验 ────────────────────────────────────────────
 
 def parse_frontmatter(path: Path) -> dict[str, Any]:
@@ -164,6 +198,18 @@ def parse_frontmatter(path: Path) -> dict[str, Any]:
 
 def validate_page(path: Path) -> tuple[bool, str]:
     """校验单个页面。返回 (通过?, 消息)。"""
+    # Folder notes (type starts with _) are navigation aids, skip validation
+    raw = path.read_text(encoding="utf-8")
+    if raw.startswith("---"):
+        parts = raw.split("---", 2)
+        if len(parts) >= 3:
+            try:
+                _fm = yaml.safe_load(parts[1]) or {}
+                if str(_fm.get("type", "")).startswith("_"):
+                    return True, "OK (folder note, skipped)"
+            except Exception:
+                pass
+
     try:
         fm = parse_frontmatter(path)
     except Exception as e:
@@ -182,28 +228,39 @@ def validate_page(path: Path) -> tuple[bool, str]:
     fm_clean = {k: v for k, v in fm.items() if k not in ("data", "history")}
 
     try:
-        if page_type == "source":
+        if page_type == "ontology":
+            return True, "OK (ontology contract, skipped)"
+        elif page_type == "source":
             SourcePage(**fm_clean)
         elif page_type == "mental-model":
             MentalModelPage(**fm_clean)
-        elif page_type in ("entity", "concept", "analysis"):
+        elif page_type == "event":
+            EventPage(**fm_clean)
+        elif page_type == "entity":
+            EntityPage(**fm_clean)
+        elif page_type == "concept":
+            ConceptPage(**fm_clean)
+        elif page_type == "analysis":
             DataPage(**fm_clean)
         else:
             return False, f"UNKNOWN TYPE: {page_type}"
         if warnings_list:
-            return True, "OK (⚠️ " + "; ".join(warnings_list) + ")"
+            return True, "OK ( " + "; ".join(warnings_list) + ")"
         return True, "OK"
     except Exception as e:
         return False, f"VALIDATION ERROR: {e}"
 
 
+def _node_subdirs(wiki_dir: Path) -> list[Path]:
+    """领域无关：扫描 wiki 下所有非隐藏子目录（机构/工具/指标/机制/事件/分析/来源 等任意命名）。"""
+    return sorted(p for p in wiki_dir.iterdir()
+                  if p.is_dir() and not p.name.startswith(".") and not p.name.startswith("_"))
+
+
 def validate_wiki(wiki_dir: Path) -> list[tuple[str, bool, str]]:
     """校验整个 wiki 目录。返回 [(文件名, 通过?, 消息)]。"""
     results = []
-    for subdir in ["sources", "entities", "concepts", "analyses", "mental-models"]:
-        d = wiki_dir / subdir
-        if not d.exists():
-            continue
+    for d in _node_subdirs(wiki_dir):
         for f in sorted(d.glob("*.md")):
             if f.name.startswith("_"):
                 continue
@@ -246,11 +303,8 @@ def collect_report_data(wiki_dir: Path) -> dict[str, Any]:
     page_slugs: set[str] = set()
     freshness: list[dict] = []
 
-    subdirs = ["sources", "entities", "concepts", "analyses", "mental-models"]
-    for subdir in subdirs:
-        d = wiki_dir / subdir
-        if not d.exists():
-            continue
+    # 领域无关：扫描所有节点子目录（机构/工具/指标/机制/事件/分析/来源 等任意命名）
+    for d in _node_subdirs(wiki_dir):
         for f in sorted(d.glob("*.md")):
             if f.name.startswith("_"):
                 continue
@@ -264,6 +318,7 @@ def collect_report_data(wiki_dir: Path) -> dict[str, Any]:
                 continue
 
             page_type = fm.get("type", "unknown")
+            subtype = fm.get("subtype", "")
             confidence = fm.get("confidence", "unknown")
             title = fm.get("title", slug)
             updated = str(fm.get("updated", ""))
@@ -274,19 +329,27 @@ def collect_report_data(wiki_dir: Path) -> dict[str, Any]:
             if confidence == "contested":
                 contested_pages.append(rel_path)
 
-            # 节点颜色按类型
-            color_map = {
-                "entity": "#4A90D9",
-                "concept": "#7B68EE",
-                "source": "#50C878",
-                "analysis": "#FF8C00",
-                "mental-model": "#E91E63",
+            # 节点颜色：实体按 subtype（机构红/工具蓝/指标青），其余按 type
+            subtype_color = {
+                "institution": "#E5484D",   # 机构 红
+                "instrument": "#4A90D9",    # 工具 蓝
+                "indicator": "#16A3A3",     # 指标 青
             }
+            type_color = {
+                "concept": "#2DA44E",       # 机制 绿
+                "event": "#D9A406",         # 事件 黄
+                "analysis": "#8B8B8B",      # 分析 灰
+                "source": "#B8B8B8",        # 来源 浅灰
+                "mental-model": "#E91E63",
+                "entity": "#4A90D9",
+            }
+            color = subtype_color.get(subtype) or type_color.get(page_type, "#999")
             nodes.append({
                 "id": slug,
                 "label": title,
                 "type": page_type,
-                "color": color_map.get(page_type, "#999"),
+                "subtype": subtype,
+                "color": color,
                 "confidence": confidence,
                 "updated": updated,
                 "path": rel_path,
@@ -369,6 +432,16 @@ def collect_report_data(wiki_dir: Path) -> dict[str, Any]:
                 "detail": f"被引用 {count} 次但页面不存在",
             })
 
+    # 校准布局：position_encoding.py 产出的确定性坐标（可选）
+    positions = None
+    pos_path = wiki_dir / "_positions.json"
+    if pos_path.exists():
+        import json as _json
+        try:
+            positions = _json.loads(pos_path.read_text(encoding="utf-8")).get("positions")
+        except Exception:
+            positions = None
+
     return {
         "name": meta.get("name", wiki_dir.name),
         "ontology_type": meta.get("ontology_type", "unknown"),
@@ -383,6 +456,7 @@ def collect_report_data(wiki_dir: Path) -> dict[str, Any]:
         "data_rows": data_rows,
         "freshness": freshness,
         "coverage_gaps": coverage_gaps,
+        "positions": positions,
     }
 
 
@@ -526,7 +600,7 @@ const cc = [
 cardsEl.innerHTML = cc.map(c => `<div class="card"><div class="num">${c.num}</div><div class="label">${c.label}</div></div>`).join('');
 
 // ── Legend ──
-const cm = { entity:'#4A90D9', concept:'#7B68EE', source:'#50C878', analysis:'#FF8C00', 'mental-model':'#E91E63' };
+const cm = { '机构':'#E5484D', '工具':'#4A90D9', '指标':'#16A3A3', '机制':'#2DA44E', '事件':'#D9A406', '分析':'#8B8B8B', '来源':'#B8B8B8' };
 document.getElementById('legend').innerHTML = Object.entries(cm).map(([t,c]) =>
   `<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${t}</div>`).join('');
 
@@ -574,15 +648,40 @@ if (DATA.nodes.length > 0) {
     smooth: { type:'curvedCW', roundness: 0.18 },
   }));
 
+  // ── 校准布局：position_encoding.py 的确定性坐标（y=本体层级, x=谱坐标） ──
+  const PE = DATA.positions || null;
+  let calibrated = !!PE;
+  const FORCE_PHYSICS = {
+    solver: 'forceAtlas2Based',
+    forceAtlas2Based: { gravitationalConstant: -80, springLength: 200, springConstant: 0.04, damping: 0.6 },
+    stabilization: { iterations: 150 },
+  };
+  if (PE) graphNodes.forEach(n => { const p = PE[n.id]; if (p) { n.x = p.x; n.y = p.y; } });
+
   network = new vis.Network(document.getElementById('graph'), { nodes: graphNodes, edges: graphEdges }, {
-    physics: {
-      solver: 'forceAtlas2Based',
-      forceAtlas2Based: { gravitationalConstant: -80, springLength: 200, springConstant: 0.04, damping: 0.6 },
-      stabilization: { iterations: 150 },
-    },
+    physics: calibrated ? false : FORCE_PHYSICS,
     interaction: { hover: true, tooltipDelay: 150, zoomView: true, navigationButtons: false },
-    layout: { improvedLayout: true },
+    layout: { improvedLayout: !calibrated },
   });
+  if (calibrated) network.fit();
+
+  if (PE) {
+    const layoutBtn = document.createElement('button');
+    layoutBtn.textContent = '布局: 校准';
+    layoutBtn.style.cssText = 'position:absolute;top:8px;right:8px;z-index:5;padding:4px 10px;font-size:11px;color:#555;background:#fff;border:1px solid #d0d0d0;border-radius:4px;cursor:pointer;';
+    document.getElementById('graph').appendChild(layoutBtn);
+    layoutBtn.onclick = () => {
+      calibrated = !calibrated;
+      layoutBtn.textContent = calibrated ? '布局: 校准' : '布局: 力导向';
+      if (calibrated) {
+        network.setOptions({ physics: false });
+        Object.entries(PE).forEach(([id, p]) => { if (nodeIds.has(id)) network.moveNode(id, p.x, p.y); });
+        network.fit({ animation: { duration: 300 } });
+      } else {
+        network.setOptions({ physics: FORCE_PHYSICS });
+      }
+    };
+  }
 
   // fit after stabilize
   network.on('stabilized', () => { network.fit({ animation: { duration: 300 } }); });
@@ -715,7 +814,7 @@ def main():
 
     if target.is_file():
         ok, msg = validate_page(target)
-        status = "✅" if ok else "❌"
+        status = "" if ok else ""
         print(f"{status} {target.name}: {msg}")
         sys.exit(0 if ok else 1)
 
@@ -733,7 +832,7 @@ def main():
         print(f"{'='*60}\n")
 
         for name, ok, msg in results:
-            status = "✅" if ok else "❌"
+            status = "" if ok else ""
             print(f"  {status} {name}")
             if not ok:
                 # 缩进显示错误详情
@@ -743,9 +842,9 @@ def main():
         print(f"\n{'─'*60}")
         print(f"  Total: {len(results)} | Passed: {passed} | Failed: {failed}")
         if failed == 0:
-            print("  Result: ALL PASSED ✅")
+            print("  Result: ALL PASSED ")
         else:
-            print(f"  Result: {failed} FAILED ❌")
+            print(f"  Result: {failed} FAILED ")
         print(f"{'─'*60}\n")
 
         sys.exit(0 if failed == 0 else 1)

@@ -9,10 +9,17 @@
 
 | 项 | 值 |
 |----|-----|
-| 端点 | `https://mcp.ablemind.cc/fibomcp/mcp` |
-| 协议 | MCP Streamable HTTP（需 `Mcp-Session-Id`），HTTPS via Cloudflare |
-| 工具 | 仅 `sparql`（无 search） |
+| 端点（项目级 `.mcp.json` 已注册为 `fibo-mcp`） | `http://39.96.218.64:8113/mcp` ← 当前可用 |
+| 备用镜像 | `https://mcp.ablemind.cc/fibomcp/mcp`（Cloudflare，2026-06 实测源站 522 不可达） |
+| 协议 | MCP Streamable HTTP（`initialize` 自动获取 `Mcp-Session-Id`） |
+| 服务版本 | FIBO 3.3.1 |
+| 工具 | `sparql`（SPARQL 查询）、`inspect`（类/属性详情） |
 | 数据规模 | 627,712 triples（含 OWL-RL 推理物化） |
+
+> **覆盖度（2026-06 实测）**：FIBO 覆盖金融实体/证券/利率/法人/年金等。对本仓库各领域：
+> - **macro 领域 = 部分覆盖**： central bank / government bond / interest rate / repurchase agreement； monetary policy / lending facility(MLF/SLF) / 利率走廊（央行操作工具不在 FIBO）。
+> - **annuity（年金）领域 = 高覆盖**： trustee / custodian / pension fund / fund manager —— FIBO 的主场，见 `seeds/fibo-pensions.md`。
+> 因此 FIBO 校验**只对照永久骨架（T3 实体/关系、T5 类型）**，不对照时变层（T0 数值/T1 状态/T2 逻辑/T4 事件）。
 
 ## 调用方式
 

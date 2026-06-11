@@ -1,76 +1,120 @@
-"""Wiki 结构化数据存储层。
+"""Wiki 结构化数据存储层（v2 · 双时态本体）。
 
-每个 wiki 目录下维护一个 data.db（SQLite），存储所有结构化数据。
-Markdown 页面只负责叙事分析，不在 frontmatter 中存储 data/history。
+每个 wiki 领域目录下维护一个 data.db（SQLite），存储所有结构化数据。
+Markdown 页面只负责叙事分析与关系连边；可量化/可时序/状态/事件全部进 data.db。
+
+与契约 wiki/{domain}/_ontology.md 一致。六档时间模型 → 三类物理落点：
+    T0 观测值          → data_points（逐期时序，period=valid-time，recorded_at=transaction-time）
+    T1 状态 / T2 逻辑  → facts（双时态拉链表：valid_from/valid_to/is_current，退役不删除）
+    T4 事件            → events（append-only，所有状态切换的盖章者）
+    T3 实体关系        → relations（带时态列，近永久边 valid_to 留 9999）
+
+核心纪律：覆盖只在 T0 同 (page,field,period,source) 纠错时发生；T1/T2/T3 任何变化
+都是"旧行封 valid_to + 插新行"，永不 DELETE（assert_fact / retire 实现）。
 
 用法：
     from store import WikiStore
-
-    store = WikiStore(".wiki/my-research/")
-    store.upsert_data("alpha-corp", "管理规模", 1200, "亿元", "2025-12", "2026-04-policy-doc")
-    store.add_relation("alpha-corp", "受托人市场格局", "part_of")
-
-    # 查询
-    rows = store.query_data(page_slug="alpha-corp")
-    timeline = store.query_timeline(field="管理规模")
+    store = WikiStore("wiki/macro/")
+    store.init_db()
+    store.upsert_page("7天逆回购", "7天逆回购", "entity", subtype="instrument")
+    store.record_data("7天逆回购利率", "利率", 1.40, "%", "2026-05", "2026-05-25-某券商固收报告")
+    store.assert_fact("政策利率锚", "锚工具", "7天逆回购",
+                      valid_from="2025-03", recorded_at="2026-06-07",
+                      source_slug="...", caused_by_event="2025-03-MLF改革")
+    store.add_relation("7天逆回购", "中国人民银行", "operated_by")
 
 CLI:
-    python store.py init .wiki/my-research/
-    python store.py dump .wiki/my-research/
+    python store.py init wiki/macro/
+    python store.py dump wiki/macro/
+    python store.py asof wiki/macro/ 2024-12     — 重建某日的状态切片
 """
 
 from __future__ import annotations
 
 import sqlite3
 import sys
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 from typing import Any, Optional
 
+FAR_FUTURE = "9999-12-31"
 
-SCHEMA_SQL = """
+SCHEMA_SQL = f"""
+-- 节点登记表。type 扩展到 v2 六类；entity 用 subtype 细分 机构/工具/指标。
 CREATE TABLE IF NOT EXISTS pages (
     slug        TEXT PRIMARY KEY,
     title       TEXT NOT NULL,
-    type        TEXT NOT NULL CHECK(type IN ('source','entity','concept','analysis','mental-model')),
+    type        TEXT NOT NULL CHECK(type IN ('source','entity','concept','event','analysis','ontology')),
+    subtype     TEXT,                 -- entity: institution|instrument|indicator
     confidence  TEXT NOT NULL DEFAULT 'medium' CHECK(confidence IN ('high','medium','low','contested')),
+    is_current  INTEGER NOT NULL DEFAULT 1,   -- 0 = 该页所述机制/状态已退役（见 facts）
+    valid_to    TEXT DEFAULT '{FAR_FUTURE}',   -- 机制页失效日（退役时回填）
     created     TEXT NOT NULL,
     updated     TEXT NOT NULL
 );
 
+-- T0 观测值：逐期时序。period=valid-time；recorded_at=transaction-time（哪份研报记的）。
+-- 同 (page,field,period) 被新研报修正 → 保留两行靠 recorded_at 区分，不搬 history。
 CREATE TABLE IF NOT EXISTS data_points (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     page_slug   TEXT NOT NULL REFERENCES pages(slug),
     field       TEXT NOT NULL,
     value       REAL NOT NULL,
     unit        TEXT NOT NULL,
-    period      TEXT NOT NULL,
+    period      TEXT NOT NULL,                 -- valid-time
     source_slug TEXT NOT NULL,
+    recorded_at TEXT NOT NULL,                 -- transaction-time
     scope       TEXT,
-    verified    INTEGER,              -- NULL=unknown, 0=false, 1=true
+    verified    INTEGER,
     confidence  TEXT DEFAULT 'high' CHECK(confidence IN ('high','medium','low','contested')),
+    supersedes_id INTEGER,                     -- 指向被本行修正的旧观测
     created_at  TEXT NOT NULL DEFAULT (datetime('now')),
-    UNIQUE(page_slug, field, period)  -- 同一页面同一字段同一时段只留一条（upsert 覆盖）
+    UNIQUE(page_slug, field, period, source_slug)
 );
 
-CREATE TABLE IF NOT EXISTS history (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    page_slug   TEXT NOT NULL REFERENCES pages(slug),
-    field       TEXT NOT NULL,
-    old_value   REAL NOT NULL,
-    old_unit    TEXT NOT NULL,
-    old_source  TEXT NOT NULL,
-    new_source  TEXT,
-    reason      TEXT NOT NULL,
-    date        TEXT NOT NULL,
+-- T1 状态 + T2 耐用逻辑：双时态拉链表。退役 = UPDATE valid_to/is_current + 插新行，永不删。
+CREATE TABLE IF NOT EXISTS facts (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    page_slug       TEXT NOT NULL,             -- 命题所属页（状态/逻辑的承载页）
+    predicate       TEXT NOT NULL,             -- 命题谓词，如 'policy_anchor' / 'holds'
+    object_text     TEXT,                      -- 命题宾语（文本/数值描述）
+    object_slug     TEXT,                      -- 若宾语是另一节点
+    valid_from      TEXT NOT NULL,             -- 世界上何时起为真
+    valid_to        TEXT NOT NULL DEFAULT '{FAR_FUTURE}',
+    is_current      INTEGER NOT NULL DEFAULT 1,
+    recorded_at     TEXT NOT NULL,             -- 我何时记入
+    recorded_until  TEXT NOT NULL DEFAULT '{FAR_FUTURE}',
+    confidence      TEXT DEFAULT 'high',
+    durability      TEXT,                      -- T2 用：high|medium|low
+    source_slug     TEXT,
+    supersedes_id   INTEGER,                   -- 串接前任断言
+    caused_by_event TEXT,                      -- 哪个事件创设了它
+    retired_by_event TEXT,                     -- 哪个事件退役了它
+    created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- T4 事件：append-only，所有 T1 切换 / T2 退役 / T3 变更的盖章者与审计锚。
+CREATE TABLE IF NOT EXISTS events (
+    slug        TEXT PRIMARY KEY,
+    event_date  TEXT NOT NULL,
+    actor_slug  TEXT,
+    description TEXT,
+    source_slug TEXT,
+    recorded_at TEXT NOT NULL,
     created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- T3 关系：受控词表的边，带时态。近永久边 valid_to 留 9999；退役只盖 valid_to。
 CREATE TABLE IF NOT EXISTS relations (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     from_slug   TEXT NOT NULL,
     to_slug     TEXT NOT NULL,
     type        TEXT NOT NULL,
+    bound_role  TEXT,                          -- bounds 用：upper|lower|center
+    valid_from  TEXT,
+    valid_to    TEXT DEFAULT '{FAR_FUTURE}',
+    recorded_at TEXT,
+    retract_event_slug TEXT,
     created_at  TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE(from_slug, to_slug, type)
 );
@@ -78,14 +122,16 @@ CREATE TABLE IF NOT EXISTS relations (
 CREATE INDEX IF NOT EXISTS idx_dp_page ON data_points(page_slug);
 CREATE INDEX IF NOT EXISTS idx_dp_field ON data_points(field);
 CREATE INDEX IF NOT EXISTS idx_dp_period ON data_points(period);
+CREATE INDEX IF NOT EXISTS idx_facts_page ON facts(page_slug);
+CREATE INDEX IF NOT EXISTS idx_facts_pred ON facts(predicate);
+CREATE INDEX IF NOT EXISTS idx_facts_cur ON facts(is_current);
 CREATE INDEX IF NOT EXISTS idx_rel_from ON relations(from_slug);
 CREATE INDEX IF NOT EXISTS idx_rel_to ON relations(to_slug);
-CREATE INDEX IF NOT EXISTS idx_hist_page ON history(page_slug);
 """
 
 
 class WikiStore:
-    """单个 wiki 的 SQLite 存储接口。"""
+    """单个领域 wiki 的双时态 SQLite 存储接口。"""
 
     def __init__(self, wiki_dir: str | Path):
         self.wiki_dir = Path(wiki_dir)
@@ -98,7 +144,6 @@ class WikiStore:
             self._conn = sqlite3.connect(str(self.db_path))
             self._conn.row_factory = sqlite3.Row
             self._conn.execute("PRAGMA journal_mode=WAL")
-            self._conn.execute("PRAGMA foreign_keys=ON")
         return self._conn
 
     def init_db(self) -> None:
@@ -114,108 +159,147 @@ class WikiStore:
     # ── Pages ──
 
     def upsert_page(self, slug: str, title: str, page_type: str,
-                    confidence: str = "medium",
+                    subtype: str = None, confidence: str = "medium",
+                    is_current: int = 1, valid_to: str = FAR_FUTURE,
                     created: str = "", updated: str = "") -> None:
         today = date.today().isoformat()
         self.conn.execute("""
-            INSERT INTO pages (slug, title, type, confidence, created, updated)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO pages (slug, title, type, subtype, confidence, is_current, valid_to, created, updated)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(slug) DO UPDATE SET
-                title=excluded.title, type=excluded.type,
-                confidence=excluded.confidence, updated=excluded.updated
-        """, (slug, title, page_type, confidence, created or today, updated or today))
+                title=excluded.title, type=excluded.type, subtype=excluded.subtype,
+                confidence=excluded.confidence, is_current=excluded.is_current,
+                valid_to=excluded.valid_to, updated=excluded.updated
+        """, (slug, title, page_type, subtype, confidence, is_current, valid_to,
+              created or today, updated or today))
         self.conn.commit()
 
-    # ── Data Points ──
+    # ── T0: Data Points（观测值时序） ──
 
-    def upsert_data(self, page_slug: str, field: str, value: float,
+    def record_data(self, page_slug: str, field: str, value: float,
                     unit: str, period: str, source_slug: str,
-                    scope: str = None, verified: bool = None,
-                    confidence: str = "high") -> Optional[dict]:
-        """写入数据点。如果同字段同时段已有旧值，自动写入 history 并返回旧记录。"""
-        # 查旧值
-        old = self.conn.execute(
-            "SELECT value, unit, source_slug FROM data_points WHERE page_slug=? AND field=? AND period=?",
-            (page_slug, field, period)
-        ).fetchone()
-
-        old_record = None
-        if old and old["value"] != value:
-            old_record = dict(old)
-            # 写 history
-            self.conn.execute("""
-                INSERT INTO history (page_slug, field, old_value, old_unit, old_source, new_source, reason, date)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (page_slug, field, old["value"], old["unit"], old["source_slug"],
-                  source_slug, f"{field}: {old['value']} → {value}", date.today().isoformat()))
-
-        # upsert data point
+                    recorded_at: str = None, scope: str = None,
+                    verified: bool = None, confidence: str = "high") -> None:
+        """记一条观测值。同 (page,field,period,source) 幂等覆盖；不同 source 的修正值并存。"""
+        recorded_at = recorded_at or date.today().isoformat()
         v_int = None if verified is None else (1 if verified else 0)
         self.conn.execute("""
-            INSERT INTO data_points (page_slug, field, value, unit, period, source_slug, scope, verified, confidence)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(page_slug, field, period) DO UPDATE SET
-                value=excluded.value, unit=excluded.unit,
-                source_slug=excluded.source_slug, scope=excluded.scope,
-                verified=excluded.verified, confidence=excluded.confidence
-        """, (page_slug, field, value, unit, period, source_slug, scope, v_int, confidence))
+            INSERT INTO data_points (page_slug, field, value, unit, period, source_slug, recorded_at, scope, verified, confidence)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(page_slug, field, period, source_slug) DO UPDATE SET
+                value=excluded.value, unit=excluded.unit, recorded_at=excluded.recorded_at,
+                scope=excluded.scope, verified=excluded.verified, confidence=excluded.confidence
+        """, (page_slug, field, value, unit, period, source_slug, recorded_at, scope, v_int, confidence))
         self.conn.commit()
-        return old_record
 
-    # ── Relations ──
+    # 兼容旧 API 名
+    def upsert_data(self, *a, **k):
+        return self.record_data(*a, **k)
 
-    def add_relation(self, from_slug: str, to_slug: str, rel_type: str) -> None:
+    # ── T1/T2: Facts（状态/逻辑拉链，退役不删除） ──
+
+    def assert_fact(self, page_slug: str, predicate: str, object_text: str,
+                    valid_from: str, recorded_at: str, source_slug: str = None,
+                    object_slug: str = None, confidence: str = "high",
+                    durability: str = None, caused_by_event: str = None) -> Optional[int]:
+        """断言一条 T1 状态 / T2 逻辑。若 (page,predicate) 已有 current 断言，先退役它（封 valid_to + 盖事件），再插新行。永不删除。返回被退役的旧行 id。"""
+        cur = self.conn.execute(
+            "SELECT id FROM facts WHERE page_slug=? AND predicate=? AND is_current=1",
+            (page_slug, predicate)).fetchone()
+        supersedes = None
+        if cur:
+            supersedes = cur["id"]
+            self.conn.execute(
+                "UPDATE facts SET valid_to=?, is_current=0, retired_by_event=? WHERE id=?",
+                (valid_from, caused_by_event, cur["id"]))
         self.conn.execute("""
-            INSERT OR IGNORE INTO relations (from_slug, to_slug, type)
-            VALUES (?, ?, ?)
-        """, (from_slug, to_slug, rel_type))
+            INSERT INTO facts (page_slug, predicate, object_text, object_slug, valid_from,
+                is_current, recorded_at, confidence, durability, source_slug, supersedes_id, caused_by_event)
+            VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)
+        """, (page_slug, predicate, object_text, object_slug, valid_from, recorded_at,
+              confidence, durability, source_slug, supersedes, caused_by_event))
+        self.conn.commit()
+        return supersedes
+
+    # ── T4: Events ──
+
+    def add_event(self, slug: str, event_date: str, actor_slug: str = None,
+                  description: str = None, source_slug: str = None,
+                  recorded_at: str = None) -> None:
+        recorded_at = recorded_at or date.today().isoformat()
+        self.conn.execute("""
+            INSERT INTO events (slug, event_date, actor_slug, description, source_slug, recorded_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(slug) DO UPDATE SET
+                event_date=excluded.event_date, actor_slug=excluded.actor_slug,
+                description=excluded.description
+        """, (slug, event_date, actor_slug, description, source_slug, recorded_at))
+        self.conn.commit()
+
+    # ── T3: Relations ──
+
+    def add_relation(self, from_slug: str, to_slug: str, rel_type: str,
+                     bound_role: str = None, valid_from: str = None,
+                     recorded_at: str = None) -> None:
+        self.conn.execute("""
+            INSERT OR IGNORE INTO relations (from_slug, to_slug, type, bound_role, valid_from, recorded_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (from_slug, to_slug, rel_type, bound_role, valid_from,
+              recorded_at or date.today().isoformat()))
+        self.conn.commit()
+
+    def retire_relation(self, from_slug: str, to_slug: str, rel_type: str,
+                        valid_to: str, event_slug: str = None) -> None:
+        self.conn.execute(
+            "UPDATE relations SET valid_to=?, retract_event_slug=? WHERE from_slug=? AND to_slug=? AND type=?",
+            (valid_to, event_slug, from_slug, to_slug, rel_type))
         self.conn.commit()
 
     # ── Queries ──
 
     def query_data(self, page_slug: str = None, field: str = None) -> list[dict]:
-        """查询数据点。可按页面或字段过滤。"""
         sql = "SELECT * FROM data_points WHERE 1=1"
         params: list = []
         if page_slug:
-            sql += " AND page_slug=?"
-            params.append(page_slug)
+            sql += " AND page_slug=?"; params.append(page_slug)
         if field:
-            sql += " AND field=?"
-            params.append(field)
-        sql += " ORDER BY period DESC"
+            sql += " AND field=?"; params.append(field)
+        sql += " ORDER BY period DESC, recorded_at DESC"
         return [dict(r) for r in self.conn.execute(sql, params).fetchall()]
 
-    def query_timeline(self, field: str, page_slug: str = None) -> list[dict]:
-        """查询某字段的时间线（含历史值）。"""
-        # 当前值
-        sql = "SELECT page_slug, field, value, unit, period, source_slug, 'current' as status FROM data_points WHERE field=?"
-        params: list = [field]
-        if page_slug:
-            sql += " AND page_slug=?"
-            params.append(page_slug)
+    def latest_value(self, page_slug: str, field: str, as_of_period: str = None) -> Optional[dict]:
+        """T0 切片：截至某 period 的最新观测值（取该 period 最近 recorded_at）。"""
+        sql = "SELECT * FROM data_points WHERE page_slug=? AND field=?"
+        params: list = [page_slug, field]
+        if as_of_period:
+            sql += " AND period<=?"; params.append(as_of_period)
+        sql += " ORDER BY period DESC, recorded_at DESC LIMIT 1"
+        row = self.conn.execute(sql, params).fetchone()
+        return dict(row) if row else None
 
-        # 历史值
-        sql2 = "SELECT page_slug, field, old_value as value, old_unit as unit, date as period, old_source as source_slug, 'superseded' as status FROM history WHERE field=?"
-        params2: list = [field]
+    def current_facts(self, page_slug: str = None) -> list[dict]:
+        sql = "SELECT * FROM facts WHERE is_current=1"
+        params: list = []
         if page_slug:
-            sql2 += " AND page_slug=?"
-            params2.append(page_slug)
+            sql += " AND page_slug=?"; params.append(page_slug)
+        return [dict(r) for r in self.conn.execute(sql, params).fetchall()]
 
-        rows = [dict(r) for r in self.conn.execute(sql, params).fetchall()]
-        rows += [dict(r) for r in self.conn.execute(sql2, params2).fetchall()]
-        rows.sort(key=lambda r: r.get("period", ""), reverse=True)
-        return rows
+    def facts_as_of(self, as_of: str, page_slug: str = None) -> list[dict]:
+        """T1/T2 时间旅行：重建 as_of 那天为真的所有状态/逻辑（valid_from<=as_of<valid_to）。"""
+        sql = "SELECT * FROM facts WHERE valid_from<=? AND valid_to>?"
+        params: list = [as_of, as_of]
+        if page_slug:
+            sql += " AND page_slug=?"; params.append(page_slug)
+        sql += " ORDER BY page_slug, predicate"
+        return [dict(r) for r in self.conn.execute(sql, params).fetchall()]
 
     def query_relations(self, slug: str = None, rel_type: str = None) -> list[dict]:
         sql = "SELECT * FROM relations WHERE 1=1"
         params: list = []
         if slug:
-            sql += " AND (from_slug=? OR to_slug=?)"
-            params += [slug, slug]
+            sql += " AND (from_slug=? OR to_slug=?)"; params += [slug, slug]
         if rel_type:
-            sql += " AND type=?"
-            params.append(rel_type)
+            sql += " AND type=?"; params.append(rel_type)
         return [dict(r) for r in self.conn.execute(sql, params).fetchall()]
 
     def get_page(self, slug: str) -> Optional[dict]:
@@ -226,53 +310,64 @@ class WikiStore:
         sql = "SELECT * FROM pages"
         params: list = []
         if page_type:
-            sql += " WHERE type=?"
-            params.append(page_type)
+            sql += " WHERE type=?"; params.append(page_type)
         sql += " ORDER BY updated DESC"
         return [dict(r) for r in self.conn.execute(sql, params).fetchall()]
 
     def stats(self) -> dict:
-        """返回 wiki 数据库统计。"""
         s: dict[str, Any] = {}
         s["pages"] = self.conn.execute("SELECT COUNT(*) FROM pages").fetchone()[0]
         s["data_points"] = self.conn.execute("SELECT COUNT(*) FROM data_points").fetchone()[0]
+        s["facts"] = self.conn.execute("SELECT COUNT(*) FROM facts").fetchone()[0]
+        s["facts_current"] = self.conn.execute("SELECT COUNT(*) FROM facts WHERE is_current=1").fetchone()[0]
+        s["facts_retired"] = self.conn.execute("SELECT COUNT(*) FROM facts WHERE is_current=0").fetchone()[0]
+        s["events"] = self.conn.execute("SELECT COUNT(*) FROM events").fetchone()[0]
         s["relations"] = self.conn.execute("SELECT COUNT(*) FROM relations").fetchone()[0]
         s["contested_pages"] = self.conn.execute("SELECT COUNT(*) FROM pages WHERE confidence='contested'").fetchone()[0]
-        s["contested_data"] = self.conn.execute("SELECT COUNT(*) FROM data_points WHERE confidence='contested'").fetchone()[0]
-        for row in self.conn.execute("SELECT type, COUNT(*) as cnt FROM pages GROUP BY type").fetchall():
-            s[f"pages_{row['type']}"] = row["cnt"]
+        for row in self.conn.execute(
+                "SELECT type, COALESCE(subtype,'') AS st, COUNT(*) as cnt FROM pages GROUP BY type, subtype").fetchall():
+            label = f"{row['type']}/{row['st']}" if row["st"] else row["type"]
+            s[f"pages_{label}"] = row["cnt"]
         return s
 
     def dump(self) -> str:
-        """输出人类可读的数据库摘要。"""
         st = self.stats()
         lines = [
             f"Wiki Store: {self.wiki_dir.name}",
-            f"{'='*50}",
-            f"Pages: {st['pages']} | Data Points: {st['data_points']} | Relations: {st['relations']} | Contested Pages: {st['contested_pages']} | Contested Data: {st['contested_data']}",
+            "=" * 56,
+            f"Pages: {st['pages']} | DataPoints: {st['data_points']} | "
+            f"Facts: {st['facts']} (current {st['facts_current']}, retired {st['facts_retired']}) | "
+            f"Events: {st['events']} | Relations: {st['relations']}",
             "",
+            "Pages by type:",
         ]
-        # pages by type
-        for pt in ["entity", "concept", "source", "analysis", "mental-model"]:
-            key = f"pages_{pt}"
-            if st.get(key):
-                lines.append(f"  {pt}: {st[key]}")
+        for k, v in sorted(st.items()):
+            if k.startswith("pages_"):
+                lines.append(f"  {k[6:]}: {v}")
 
-        # recent data points
-        recent = self.conn.execute(
-            "SELECT page_slug, field, value, unit, period FROM data_points ORDER BY created_at DESC LIMIT 10"
+        cur = self.conn.execute(
+            "SELECT page_slug, predicate, object_text, valid_from FROM facts WHERE is_current=1 ORDER BY page_slug LIMIT 12"
         ).fetchall()
-        if recent:
-            lines += ["", "Recent Data Points:"]
-            for r in recent:
-                lines.append(f"  {r['page_slug']}.{r['field']} = {r['value']} {r['unit']} ({r['period']})")
+        if cur:
+            lines += ["", "Current facts (T1/T2):"]
+            for r in cur:
+                lines.append(f"  [{r['page_slug']}] {r['predicate']} = {r['object_text']} (since {r['valid_from']})")
 
-        # relations
-        rels = self.conn.execute("SELECT * FROM relations ORDER BY created_at DESC LIMIT 10").fetchall()
+        retired = self.conn.execute(
+            "SELECT page_slug, predicate, object_text, valid_from, valid_to, retired_by_event FROM facts WHERE is_current=0"
+        ).fetchall()
+        if retired:
+            lines += ["", "Retired facts (退役不删除):"]
+            for r in retired:
+                lines.append(f"  [{r['page_slug']}] {r['predicate']} = {r['object_text']} "
+                             f"({r['valid_from']}→{r['valid_to']}, by {r['retired_by_event']})")
+
+        rels = self.conn.execute("SELECT from_slug, type, to_slug, bound_role FROM relations LIMIT 14").fetchall()
         if rels:
-            lines += ["", "Recent Relations:"]
+            lines += ["", "Relations:"]
             for r in rels:
-                lines.append(f"  {r['from_slug']} --{r['type']}--> {r['to_slug']}")
+                role = f" [{r['bound_role']}]" if r["bound_role"] else ""
+                lines.append(f"  {r['from_slug']} --{r['type']}{role}--> {r['to_slug']}")
 
         return "\n".join(lines)
 
@@ -282,8 +377,9 @@ class WikiStore:
 def main():
     if len(sys.argv) < 3:
         print("Usage:")
-        print("  python store.py init <wiki_dir>   — initialize data.db")
-        print("  python store.py dump <wiki_dir>   — dump database summary")
+        print("  python store.py init <wiki_dir>")
+        print("  python store.py dump <wiki_dir>")
+        print("  python store.py asof <wiki_dir> <YYYY-MM>   — 重建某日状态切片")
         sys.exit(1)
 
     cmd, target = sys.argv[1], Path(sys.argv[2])
@@ -294,12 +390,18 @@ def main():
         print(f"Initialized: {store.db_path}")
     elif cmd == "dump":
         if not store.db_path.exists():
-            print(f"No data.db found in {target}")
-            sys.exit(1)
+            print(f"No data.db found in {target}"); sys.exit(1)
         print(store.dump())
+    elif cmd == "asof":
+        if len(sys.argv) < 4:
+            print("asof needs a date, e.g. 2024-12"); sys.exit(1)
+        as_of = sys.argv[3]
+        print(f"== 状态切片 as of {as_of} ==")
+        for f in store.facts_as_of(as_of):
+            print(f"  [{f['page_slug']}] {f['predicate']} = {f['object_text']} "
+                  f"(valid {f['valid_from']}→{f['valid_to']})")
     else:
-        print(f"Unknown command: {cmd}")
-        sys.exit(1)
+        print(f"Unknown command: {cmd}"); sys.exit(1)
 
     store.close()
 
