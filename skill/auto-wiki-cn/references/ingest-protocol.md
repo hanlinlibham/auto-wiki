@@ -161,7 +161,7 @@ created: 2026-05-25
 updated: 2026-05-25
 sources: []
 confidence: high
-source_type: 二手·券商
+source_type: 二手          # 券商研报
 source_origin: 某券商研究所
 source_date: 2026-05-25
 ---

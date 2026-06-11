@@ -286,9 +286,9 @@ User: 1, 2
 
 Agent: [Searching "stock-bond correlation treasury futures"...]
 Agent: Found 2 candidate sources:
-       - [authoritative-secondary] CICC fixed-income report "Stock-Bond Correlation Analysis" ← recommended
+       - [authoritative-secondary] a major broker's fixed-income report "Stock-Bond Correlation Analysis" ← recommended
        - [secondary] a WeChat blog post ← skip (blacklisted channel)
-       Confirm using the CICC report?
+       Confirm using the broker report?
 
 User: Confirm
 

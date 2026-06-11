@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1 — 2026-06-11
+
+### Fixed
+- `scaling.md` L2 index-builder example still iterated the pre-0.3 four-directory layout (`sources/entities/concepts/analyses`); now iterates the 0.3 type directories in both editions
+- `ingest-protocol.md` (CN) used `source_type: 二手·券商`, which is outside the `schema.py` enum; normalized to `二手` with an inline note (EN edition was already normalized)
+- Examples referencing a specific broker by name are now anonymized in both editions
+
 ## 0.3.0 — 2026-06-11
 
 ### Changed (breaking)

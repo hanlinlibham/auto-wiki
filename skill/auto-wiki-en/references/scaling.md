@@ -163,7 +163,7 @@ def build_index(wiki_dir):
     c.execute("INSERT INTO pages_fts(pages_fts) VALUES('delete-all')")
 
     # Traverse all md files
-    for subdir in ['sources', 'entities', 'concepts', 'analyses']:
+    for subdir in ['institutions', 'instruments', 'indicators', 'mechanisms', 'events', 'analyses', 'sources']:
         dir_path = wiki_dir / subdir
         if not dir_path.exists():
             continue
