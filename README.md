@@ -19,7 +19,7 @@
 >
 > **Other agents** — point them at `SKILL.md` and its `references/` directory.
 >
-> ℹ️ `auto-wiki-cn` is the only maintained edition (**v0.4.4**, seven modes). The protocol
+> ℹ️ `auto-wiki-cn` is the only maintained edition (**v0.4.4+survey.1**, eight modes). The protocol
 > prose is Chinese; the Python tools under `references/` are language-neutral. The English
 > edition was **archived at v0.3.0** on 2026-08-12 — it still runs, but has no `init` or
 > `source` mode and no precheck gate. See
@@ -52,7 +52,7 @@
 >
 > **其他 Agent** — 让它读 `skill/auto-wiki-cn/SKILL.md` 及其 `references/` 目录即可。
 >
-> ℹ️ 中文版是唯一在维护的版本（**v0.4.4**，七模式）。英文版已于 2026-08-12
+> ℹ️ 中文版是唯一在维护的版本（**v0.4.4+survey.1**，八模式）。英文版已于 2026-08-12
 > **归档在 v0.3.0**，移到 [`archive/auto-wiki-en-v0.3.0/`](archive/auto-wiki-en-v0.3.0/)
 > ——仍能跑，但没有 init 和 source 模式，也没有写入前预检。
 
@@ -70,10 +70,11 @@ AI Agent 做研究、写报告、拉数据——然后全忘了。下周问同�
 
 auto-wiki 是一个给 AI Agent（Claude Code、Codex 等）用的 Skill。装上之后，Agent 会自己维护一个 wiki：读到新材料就和已有页面比对，该更新的更新，说法矛盾的标出来，数据变了的记下演化过程。
 
-七个模式：
+八个模式：
 
 | 模式 | 触发 | Agent 做什么 |
 |------|------|-------------|
+| **survey** | `/auto-wiki survey`、"我已经有笔记了"、"冷启动" | 只读结构扫你已有的笔记目录 → 反推建库提案 → 问出禁混规则 → 出提案与种子草案，**不建库、不写你任何文件** |
 | **init** | `/auto-wiki init`、"从零建库" | 访谈你的真实工作流 → 展示提案 → 建领域与本体契约 → 首次 ingest → 用真实问题验收 |
 | **source** | `/auto-wiki source`、"按这份清单取材" | 拆索引为原子查询 → 多通道 fan-out 搜原料 → 带溯源整合 → 落 `Inbox/raw/`，**不碰 wiki** |
 | **recall** | `/auto-wiki recall {领域}` | 加载 wiki 上下文，后续所有问题先查 wiki 再回答 |
@@ -88,7 +89,10 @@ Agent 也能从自然语言自动路由——"之前研究过 XX"触发 recall�
 
 ### 快速开始
 
-装好之后，在一个空目录里说 `/auto-wiki init`，Agent 会问你三轮：
+**已经有一堆笔记的话，先说 `/auto-wiki survey` 并指给它看**——它只读目录名和文件名（不打开文件），
+反推出一份建库提案再问你。有存量的人这样起步，比冷着回答下面三轮准得多。
+
+从零开始的话，在一个空目录里说 `/auto-wiki init`，Agent 会问你三轮：
 
 1. 你拿到一份新材料通常怎么处理、最后要产出什么？以后会反复问这个库的三个问题是什么？
 2. 第一份材料是什么？哪些内容需要持续更新？
@@ -200,7 +204,7 @@ python references/export_okf.py wiki/{领域}
 
 | 版本 | 目录 | 状态 |
 |------|------|------|
-| 中文 | `skill/auto-wiki-cn/` | **v0.4.4** — 在维护。七模式（新增 init 访谈建库、source 取材）、五试预检、实例配置解耦、可运行示例 |
+| 中文 | `skill/auto-wiki-cn/` | **v0.4.4+survey.1** — 在维护。八模式（本版新增 survey 存量勘察；0.4.x 引入 init 访谈建库、source 取材）、五试预检、实例配置解耦、可运行示例 |
 | English | [`archive/auto-wiki-en-v0.3.0/`](archive/auto-wiki-en-v0.3.0/) | **v0.3.0 · 已归档（2026-08-12）** — 五模式，仍能跑但不再更新 |
 
 复制一个目录就能独立工作。英文版归档的原因和缺失清单见
@@ -234,10 +238,11 @@ AI agents do research, write reports, pull data — then forget everything. Ask 
 
 auto-wiki is a **knowledge compiler** skill for AI agents (Claude Code, Codex, etc.). Instead of retrieving from raw documents at query time, the agent incrementally builds and maintains a structured wiki — comparing new information against existing pages, updating what changed, flagging contradictions, and preserving the evolution of knowledge.
 
-Seven modes:
+Eight modes:
 
 | Mode | Trigger | What the Agent Does |
 |------|---------|-------------------|
+| **survey** | `/auto-wiki survey`, "I already have notes" | Scan an existing notes folder **structure-only** → reverse-infer the setup proposal → elicit anti-confusion rules → emit proposal and seed drafts, **creating nothing and writing none of your files** |
 | **init** | `/auto-wiki init`, "start from scratch" | Interview your actual workflow → propose → create domain + ontology contract → first ingest → verify with a real question |
 | **source** | `/auto-wiki source`, "collect material for this list" | Split index into atomic queries → fan-out across channels → integrate with provenance → land in `Inbox/raw/`, **never touching the wiki** |
 | **recall** | `/auto-wiki recall {domain}` | Load wiki context, answer all subsequent questions from accumulated knowledge |
@@ -417,7 +422,7 @@ This project builds on ideas and inspiration from:
 
 | Version | Directory | Status |
 |---------|-----------|--------|
-| Chinese | `skill/auto-wiki-cn/` | **v0.4.4** — maintained. Seven modes (adds `init` interview-based setup and `source` collection), five-check precheck, decoupled instance config, runnable example |
+| Chinese | `skill/auto-wiki-cn/` | **v0.4.4+survey.1** — maintained. Eight modes (this edition adds `survey` structure-only recon of existing notes; 0.4.x added `init` and `source`), five-check precheck, decoupled instance config, runnable example |
 | English | [`archive/auto-wiki-en-v0.3.0/`](archive/auto-wiki-en-v0.3.0/) | **v0.3.0 · archived 2026-08-12** — five modes, still runs, no longer updated |
 
 Copy one directory and it works standalone. The English edition was archived rather than

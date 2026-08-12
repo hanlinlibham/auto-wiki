@@ -4,12 +4,12 @@
 > intact, not deleted — every file is exactly as it was at v0.3.0.
 >
 > The maintained implementation is [`../../skill/auto-wiki-cn/`](../../skill/auto-wiki-cn/)
-> at **v0.4.4**.
+> at **v0.4.4+survey.1**.
 
 ## Why it was archived
 
 Engine development ran ahead on the Chinese edition between 2026-06 and 2026-08.
-This edition documents **five modes**; the current engine has **seven**. Porting
+This edition documents **five modes**; the current engine has **eight**. Porting
 0.4.x would mean translating two new protocol documents plus substantial SKILL.md
 changes — work that was never scheduled. Rather than leave a stale copy sitting
 next to the maintained one where it reads as an equal option, it is archived.
@@ -18,6 +18,7 @@ next to the maintained one where it reads as an equal option, it is archived.
 
 | Missing | What you lose |
 |---|---|
+| **`survey` mode** (`survey-protocol.md`) | Structure-only recon of an existing notes folder that reverse-infers the setup proposal before `init` runs. |
 | **`init` mode** (`init-protocol.md`) | The interview-based setup that infers your first domain, node types and relations from your actual workflow. Without it you build the wiki structure by hand. |
 | **`source` mode** (`source-protocol.md`) | The collection phase — fan-out search that lands material in `Inbox/raw/` with provenance and channel grading, without touching the wiki. |
 | **`precheck.py`** | The pre-write hard gate (schema + four high-frequency defect classes) and same-type collision detection. |

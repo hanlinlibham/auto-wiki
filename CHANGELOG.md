@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.4.4+survey.1 — 2026-08-12
+
+公开版在 0.4.4 基线上增加一个模式。版本号写成 `0.4.4+survey.1` 而不是 0.5.0：
+基线仍是 0.4.4，`+survey.1` 是本仓的增量，不冒充上游更高版本。
+
+### Added
+- **`survey` 模式（存量勘察）** —— 站在 `init` 之前的取证相。人指一个**已经存在的**
+  笔记库或工作目录，Agent **只读结构不读正文**地扫一遍，反推出 init 提案草案与种子
+  草案，**不建库、不写用户任何文件**。
+  - 动机：`init` 第一轮要人凭空说出领域、节点类型、路由词和三个反复问的问题，冷着答
+    只能给场面话。而已有的目录名就是用户的分类学，文件名高频词就是路由词，改动时间
+    分布就区分了动态与稳定知识——先扫再问，提案质量不是一个量级。
+  - 三条硬边界：不读正文（默认零内容暴露，要读须逐次授权；`--frontmatter` 只读 YAML
+    头的键与标签）、不导入存量（守 `init` 的「不导入整批历史资料」，读结构不是导入）、
+    不写用户既有目录。
+  - `references/survey.py` 承担确定性半边：目录树、文件名 n-gram 高频词（中文按字
+    n-gram，不引分词依赖）、扩展名分布、修改时间分桶、可选 frontmatter 键与标签。
+    **输出长度不随语料规模增长**——各节按 `--top` 截断，扫 100 个文件和扫 10 万个
+    文件报告都是一页，且绝不打印文件清单。计数一律由脚本给出，Agent 不许自己数。
+  - 禁混规则**刻意不做自动生成**：产物是收敛后的结果，混淆痕迹已被抹掉，从结构里挖
+    不出来。协议规定只能问人，并给出问法——「你带新人时反复纠正过哪几组概念？」
+
 ## 0.4.4 — 2026-08-12
 
 The public edition jumps 0.3.1 → 0.4.4. Engine development continued on a private
@@ -61,7 +83,7 @@ the English edition remains at 0.3.0 and does not yet carry the additions below.
 
 ### Archived
 - **The English edition is archived at v0.3.0** and moved to `archive/auto-wiki-en-v0.3.0/`.
-  It documents five modes against an engine that now has seven, and the 0.4.x port was never
+  It documents five modes against an engine that now has eight, and the 0.4.x port was never
   scheduled — left in place beside the maintained edition it read as an equal option. Nothing
   was deleted: all 19 files are kept byte-for-byte, git records the move as renames, and
   `archive/README.md` carries the tombstone (date, reason, successor). It still runs; it just

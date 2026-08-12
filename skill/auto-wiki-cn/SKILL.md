@@ -1,9 +1,10 @@
 ---
 name: auto-wiki
 metadata:
-  version: "0.4.4"
+  version: "0.4.4+survey.1"
 description: |
-  把源材料增量编译为持久化 Markdown + SQLite wiki，实现跨会话知识积累。用于建立或使用个人/领域知识库、Obsidian wiki，以及取材、编译、查询和治理已有 wiki。七模式按意图路由：
+  把源材料增量编译为持久化 Markdown + SQLite wiki，实现跨会话知识积累。用于建立或使用个人/领域知识库、Obsidian wiki，以及取材、编译、查询和治理已有 wiki。八模式按意图路由：
+  survey（我已经有笔记了、勘察存量、冷启动、看看我现有的资料）→ 只读结构扫已有目录，反推 init 提案与种子草案，不建库不写盘；
   init（初始化、从零建库、搭建 Obsidian）→ 访谈真实工作流并创建首个领域；
   source（取材、找资料、按清单搜）→ fan-out 搜集，收口 Inbox/raw，不碰正典；
   recall（打开 wiki、基于积累、之前研究过）→ 持续加载已有知识；
@@ -50,10 +51,11 @@ Agent 每天帮你做研究、写报告、拉数据——但做完就忘。下�
 
 不是 RAG（每次从文档堆里临时检索），是编译——Agent 读完源文件后，把关键信息写进 wiki 已有页面，和旧知识比较、合并、标注冲突。下次执行任何任务前，先读 wiki，从积累的基础上工作。
 
-## 七个模式
+## 八个模式
 
 | 模式 | 触发 | Agent 做什么 |
 |------|------|-------------|
+| **survey** | `survey` / “我已经有笔记了” / “勘察存量” / “冷启动” | 只读结构扫已有目录 → 反推提案 → 问出禁混规则 → 出报告+提案草案+种子草案，**不建库、不写用户任何文件** |
 | **init** | `init` / “从零建库” / “搭建 Obsidian” | 访谈真实工作流 → 展示提案 → 建领域与契约 → 首次 ingest → 用真实问题验收 |
 | **source** | `source` / "根据索引找资料" / "取材" | 解析索引/钩子清单 → 动用全部取材通道 fan-out 搜原料 → 整合带溯源 → **落 Inbox/raw（不碰 wiki）** |
 | **recall** | `recall` / `recall {topic}` | 加载 wiki 上下文，后续所有问题先查 wiki 再回答 |
@@ -65,6 +67,37 @@ Agent 每天帮你做研究、写报告、拉数据——但做完就忘。下�
 > **source 与 deep-dive 都涉及向外搜索，但方向相反**：deep-dive 由 `lint(Coverage)` 自动找 wiki **内部缺口**、搜回来**直接 ingest**；source 由**人给的索引**驱动、向外 fan-out 取材、**停在 Inbox/raw 闸前**。source 的产出正是 ingest / deep-dive 的输入。deep-dive 不是独立模式（= lint+ingest 组合管道）；source 是独立模式（管道最前端的取材相）。
 
 recall 模式 vs query 的区别：query 是单次操作（问一个问题，查一次 wiki）。recall 模式是持续状态——进入后，这轮对话里的每个问题都先过 wiki。
+
+---
+
+## survey 模式（存量勘察）
+
+**详细协议见 `references/survey-protocol.md`。**
+
+站在 `init` 之前的取证相：人指一个**已经存在的**笔记库或工作目录，Agent
+**只读结构不读正文**地扫一遍，反推出 init 提案草案与种子草案，**不建库、
+不写用户任何文件**。
+
+有存量的人是多数，而 init 第一轮要人凭空说出领域、节点类型、路由词和三个
+反复问的问题——冷着答只能给场面话。他已有的目录名就是他的分类学，文件名
+高频词就是他的路由词，改动时间分布就区分了动态与稳定知识。先扫再问，提案
+质量不是一个量级。
+
+```bash
+python references/survey.py <目录> [--frontmatter] [--top 30]
+```
+
+三条硬边界：**不读正文**（默认零内容暴露，要读须逐次授权）、**不导入存量**
+（守 init「不导入整批历史资料」那条，读结构不是导入）、**不写用户既有目录**
+（一个字节都不写）。
+
+上下文纪律：存量库动辄上万文件，**一次扫全库灌满上下文就没有下一步了**。
+`survey.py` 各节按 `--top` 截断，输出长度不随语料规模增长；绝不打印文件清单，
+只出聚合量；下钻按用户点名，一次一个子目录重跑，不要拉进来再筛。
+
+**禁混规则挖不到**——产物是收敛后的结果，混淆痕迹已被抹掉。那只能问人，而且
+要问对：**「你带新人时反复纠正过哪几组概念？」** 这比问「有哪些容易混的概念」
+好答十倍。
 
 ---
 
@@ -179,6 +212,7 @@ Agent 执行：
 
 | 操作 | 必读 | 首次时读 | 有工具时读 |
 |------|------|---------|-----------|
+| **survey** | `survey-protocol.md`, `survey.py`（跑，不必读） | `init-protocol.md`（要出提案草案时）, `seed-ontologies.md`（要起草种子时） | — |
 | **init** | `init-protocol.md`, `storage-spec.md` | `seed-ontologies.md` + 适用的 `seeds/{name}.md` | — |
 | **source** | `source-protocol.md` | — | `source-validation.md`（渠道分档/黑名单） |
 | **ingest** | `ingest-protocol.md`, `wiki-format.md`, `schema.py`, `precheck.py`（跑，不必读） | `storage-spec.md`（wiki 不存在时）, `seed-ontologies.md` + `seeds/{name}.md`（meta.yaml 声明了 seed 时） | `fact-check.md`, `source-validation.md` |
