@@ -42,8 +42,8 @@ Agent 在首次 ingest 前读取对应的种子文件。如果 `seed` 字段为�
 
 | 种子文件 | 覆盖领域 | 基于标准 |
 |---------|---------|---------|
+| `seeds/reading-notes.md` | 读书、课程、论文、人物思想与主题学习 | auto-wiki 通用起点 |
 | `seeds/fibo-pensions.md` | 企业年金、养老金管理 | FIBO (EDM Council) |
-| *(待扩展)* | | |
 
 ### 可参考的行业标准本体
 
@@ -60,6 +60,7 @@ Agent 在首次 ingest 前读取对应的种子文件。如果 `seed` 字段为�
 
 | 研究类型 | 推荐种子/标准 |
 |---------|-------------|
+| 阅读 / 课程 / 论文 / 通用学习 | `reading-notes` |
 | 企业年金 / 养老金 | `fibo-pensions` |
 | 公募基金 | FIBO-SEC (Fund)，可基于此写新种子 |
 | 上市公司分析 | FIBO-BP + XBRL |

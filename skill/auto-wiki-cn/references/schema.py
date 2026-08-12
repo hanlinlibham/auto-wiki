@@ -152,7 +152,8 @@ class MentalModelPage(BasePage):
 
 
 class EntityPage(DataPage):
-    """entity 页面（机构/工具/指标）。subtype 细分；时态字段可选（写入 data.db）。"""
+    """entity 页面（机构/工具/指标）。subtype 细分；时态字段可选（写入 data.db）。
+    制度类 subtype 另有 R9 设立依据必填（anchor:/ground:，标量 wikilink），见 _check_r9。"""
     type: PageType = PageType.entity
     subtype: Optional[str] = None             # institution | instrument | indicator
     aliases: list[str] = Field(default_factory=list)
@@ -194,6 +195,44 @@ def parse_frontmatter(path: Path) -> dict[str, Any]:
     if len(parts) < 3:
         raise ValueError(f"YAML frontmatter 格式错误: {path}")
     return yaml.safe_load(parts[1]) or {}
+
+
+# ── R9 设立依据（宪法第五编第九条，批·硬）──────────────────
+# 口径与生效日来自实例配置 anchor_required: {subtypes: [...], since: "YYYY-MM-DD"}
+# （环 1a 判据数据，引擎不硬编码制度类清单；realm 落表后改契约驱动，见 ROADMAP 0.5.0）。
+# created >= since 才硬拦——落地即生效、不溯及存量，存量黄由 patrol 巡检。
+
+_ANCHOR_CFG: dict[str, dict] = {}
+
+
+def _anchor_required_for(path: Path) -> dict:
+    key = str(path.resolve().parent)
+    if key not in _ANCHOR_CFG:
+        try:
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            import instance  # noqa: PLC0415
+            _ANCHOR_CFG[key] = instance.load(path).get("anchor_required") or {}
+        except Exception:
+            _ANCHOR_CFG[key] = {}
+    return _ANCHOR_CFG[key]
+
+
+def _check_r9(path: Path, fm: dict[str, Any]) -> str:
+    """制度类 entity 新页必填 anchor:/ground:。返回空串 = 通过。"""
+    req = _anchor_required_for(path)
+    subtypes = set(req.get("subtypes") or [])
+    subtype = str(fm.get("subtype") or "")
+    if not subtypes or subtype not in subtypes:
+        return ""
+    since = str(req.get("since") or "")
+    created = str(fm.get("created") or "")
+    if since and created and created < since:
+        return ""
+    missing = [k for k in ("anchor", "ground") if not str(fm.get(k) or "").strip()]
+    if missing:
+        return (f"R9 设立依据: 制度实体（subtype={subtype}）新页必填 {'、'.join(missing)}"
+                "——anchor=这类东西凭什么存在（界Ⅳ来源页），ground=这一家凭什么有此身份（T4 事件页）")
+    return ""
 
 
 def validate_page(path: Path) -> tuple[bool, str]:
@@ -244,6 +283,10 @@ def validate_page(path: Path) -> tuple[bool, str]:
             DataPage(**fm_clean)
         else:
             return False, f"UNKNOWN TYPE: {page_type}"
+        if page_type == "entity":
+            r9 = _check_r9(path, fm)
+            if r9:
+                return False, r9
         if warnings_list:
             return True, "OK ( " + "; ".join(warnings_list) + ")"
         return True, "OK"

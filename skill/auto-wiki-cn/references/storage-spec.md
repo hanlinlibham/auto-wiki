@@ -26,7 +26,7 @@
 3. 如果当前目录是 git repo 根 → 在根目录创建 `wiki/`
 4. 否则 → 在当前目录创建 `wiki/`
 
-**与 .gitignore 的关系**:`wiki/` **不要**加入 `.gitignore`——它是知识本体,必须出现在 Obsidian 图谱中、并随 vault 一起纳入 git 版本管理。**禁止使用 `.wiki/`(点前缀目录)**:Obsidian 会隐藏以 `.` 开头的目录,dotfolder 永远不进图谱。一律用可见的 `wiki/`。
+**与 .gitignore 的关系**:`wiki/` **不要**加入 `.gitignore`——它是知识本体,随 vault 一起纳入 git 版本管理,且须对任意查看器可见。**禁止使用 `.wiki/`(点前缀目录)**:多数查看器(Obsidian/IDE/文件管理器)默认隐藏以 `.` 开头的目录,知识会从图谱与文件视图里消失。一律用可见的 `wiki/`。
 
 > 例外:`wiki/.obsidian/`(Obsidian 自身配置)是唯一允许的点目录,它是 Obsidian 约定的配置位置,不影响图谱里的知识节点;其余一切知识内容(实体/概念/事件/分析/来源/`data.db`)必须在可见目录下。
 
@@ -237,7 +237,9 @@ CREATE INDEX idx_rel_type   ON relations(type);
 
 ---
 
-## Obsidian 兼容
+## Obsidian 兼容（可选适配器）
+
+> Obsidian 是**可选查看器**,不是引擎依赖:产物本身是纯 markdown + SQLite,`_report.html` 提供零依赖可视化。本节只约定"若用 Obsidian,如何适配得最好"。
 
 `wiki/` 目录(及其下每个领域目录)可直接作为 Obsidian vault 打开(`Open folder as vault`):
 
@@ -247,7 +249,7 @@ CREATE INDEX idx_rel_type   ON relations(type);
 
 > **不再需要英文目录 + 中文 Folder Note 的别名层。** v2 子目录名本身就是中文(机构/工具/指标/机制/事件/分析/来源),Obsidian 文件夹视图直接显示中文含义,无需为弥合"英文目录名/中文显示"而维护 folder note。若要给某子目录加一段导航说明,可放一个同名 folder note(如 `机构/机构.md`)并启用 Folder notes 插件,但这是可选项,不是必需的别名机制。
 
-**首次创建某领域 wiki 时**,Agent 应初始化 `.obsidian/` 配置目录(注意:这是 Obsidian 约定的配置目录,是唯一允许的点目录,不放知识节点),启用图谱着色:
+**仅当实例使用 Obsidian 时**(vault 已有 `.obsidian/`,或用户明确要求),Agent 才初始化 `.obsidian/` 配置目录(这是 Obsidian 约定的配置目录,是唯一允许的点目录,不放知识节点),启用图谱着色;不用 Obsidian 的实例跳过本节,零成本:
 
 ```
 wiki/.obsidian/             # 或 wiki/{domain}/.obsidian/,取决于把哪一层当 vault 根

@@ -1,0 +1,65 @@
+{
+  "collapse-filter": false,
+  "search": "path:wiki/ -path:log -path:_ontology",
+  "showTags": false,
+  "showAttachments": false,
+  "hideUnresolved": false,
+  "showOrphans": true,
+  "collapse-color-groups": false,
+  "colorGroups": [
+    {
+      "query": "path:人物 OR path:机构",
+      "color": {
+        "a": 1,
+        "rgb": 15352661
+      }
+    },
+    {
+      "query": "path:著作 OR path:工具",
+      "color": {
+        "a": 1,
+        "rgb": 4886745
+      }
+    },
+    {
+      "query": "path:概念 OR path:机制",
+      "color": {
+        "a": 1,
+        "rgb": 2991182
+      }
+    },
+    {
+      "query": "path:事件",
+      "color": {
+        "a": 1,
+        "rgb": 14263302
+      }
+    },
+    {
+      "query": "path:分析",
+      "color": {
+        "a": 1,
+        "rgb": 9145227
+      }
+    },
+    {
+      "query": "path:来源",
+      "color": {
+        "a": 1,
+        "rgb": 12105912
+      }
+    }
+  ],
+  "collapse-display": true,
+  "showArrow": true,
+  "textFadeMultiplier": -1.5,
+  "nodeSizeMultiplier": 1,
+  "lineSizeMultiplier": 1,
+  "collapse-forces": true,
+  "centerStrength": 0.52,
+  "repelStrength": 10,
+  "linkStrength": 1,
+  "linkDistance": 250,
+  "scale": 1,
+  "close": true
+}

@@ -1,0 +1,15 @@
+name: books
+domain: books
+direction: 阅读
+ontology_type: domain
+description: 把阅读材料编译为可追溯、可连接、可复用的知识
+central_entity: 可复用知识
+hub: 书架
+keywords: [阅读, 读书, 论文, 课程, 概念, 论点]
+validator: ''
+validator_coverage: none
+seed: reading-notes
+schema_version: '2.0'
+born_of: auto-wiki@0.4.3
+created: '2026-07-29'
+updated: '2026-07-29'

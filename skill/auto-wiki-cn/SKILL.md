@@ -1,35 +1,17 @@
 ---
 name: auto-wiki
-version: 0.3.0
+metadata:
+  version: "0.4.4"
 description: |
-  知识编译器：教 Agent 把源文件增量编译进持久化 wiki，实现跨会话知识积累。
-  运行时依赖：Python 3.8+（标准库 + pydantic）。可选增强：WebSearch（主动搜索）、外部 MCP 校验器（逻辑校验）。
-
-  五个模式，根据用户意图自动路由：
-
-  recall → 用户想基于已有知识回答问题。
-  触发词：recall、知识模式、打开 wiki、带着知识回答、根据 wiki、
-  基于积累、查一下 wiki、wiki 里有没有、之前研究过、上次整理的。
-
-  ingest → 用户提供了新材料，想编译进 wiki。
-  触发词：ingest、编译、整理这篇、消化这篇、学习这个、归档、
-  把这篇加进去、积累、研究一下、帮我整理、加入知识库。
-
-  query → 用户问了一个具体问题，想从 wiki 中找答案（单次）。
-  触发词：query、根据 wiki 回答、wiki 里怎么说、查查看。
-
-  lint → 用户想检查 wiki 健康度。
-  触发词：lint、检查 wiki、wiki 健康、清理一下、有没有矛盾。
-
-  deep-dive → 用户想让 Agent 自动找出知识缺口并补全。
-  触发词：deep-dive、深度研究、补全知识、查漏补缺、上强度、
-  自动补全、知识补全、全面补充。
-  注意：deep-dive 不是独立模式，是 lint(Coverage) + ingest(搜索填充) 的组合管道。
-
-  路由规则：如果用户没有提供新材料但提到了 wiki 或领域知识 → recall。
-  如果用户提供了文件或大段文本 → ingest。
-  如果用户说"deep-dive"或"上强度" → 执行 deep-dive 管道。
-  如果不确定 → 问用户。
+  把源材料增量编译为持久化 Markdown + SQLite wiki，实现跨会话知识积累。用于建立或使用个人/领域知识库、Obsidian wiki，以及取材、编译、查询和治理已有 wiki。七模式按意图路由：
+  init（初始化、从零建库、搭建 Obsidian）→ 访谈真实工作流并创建首个领域；
+  source（取材、找资料、按清单搜）→ fan-out 搜集，收口 Inbox/raw，不碰正典；
+  recall（打开 wiki、基于积累、之前研究过）→ 持续加载已有知识；
+  ingest（整理、消化、归档、加入知识库）→ 比较新旧后编译材料；
+  query（根据 wiki 回答、查查看）→ 单次查询；
+  lint（检查健康、矛盾、断链、重复）→ 治理知识库；
+  deep-dive（查漏补缺、上强度）→ lint 找缺口，经确认后搜索并 ingest。
+  无 wiki 且用户要建库时走 init；有新材料走 ingest；人给索引并要求找资料走 source；只提 wiki/既有领域知识走 recall。不确定则询问。
 ---
 
 # 知识编译器
@@ -40,9 +22,9 @@ description: |
 
 | 依赖 | 必需？ | 说明 |
 |------|--------|------|
-| **Python 3.8+** | 必需 | `schema.py`（frontmatter 校验）、`store.py`（SQLite 数据管理）、`build_index.py`（FTS5 索引）均为 Python 脚本。仅用标准库（`sqlite3`、`json`、`pathlib`）+ `pydantic` |
-| **pydantic** | 必需 | `schema.py` 的 frontmatter 校验依赖。`pip install pydantic` |
-| **文件系统写入** | 必需 | 在 `wiki/{topic}/` 下创建和编辑 Markdown、SQLite、`.obsidian/` 配置。**首次创建 `wiki/` 时会向用户确认位置** |
+| **Python 3.8+** | 必需 | `schema.py`、`store.py`、`precheck.py`、`new_domain.py` 等确定性工具 |
+| **pydantic + pyyaml** | 必需 | frontmatter 校验和实例配置解析。`python3 -m pip install pydantic pyyaml` |
+| **文件系统写入** | 必需 | 在 `wiki/{domain}/` 下创建 Markdown 与 SQLite；选择 Obsidian 时另写 `.obsidian/`。init 写入前先确认提案 |
 | **WebSearch / WebFetch** | 可选 | 主动模式（Agent 自主搜索材料）需要。被动模式（用户提供文件）不需要 |
 | **外部校验器（MCP）** | 可选 | 仅当 wiki 声明了 validator 时 lint 会尝试调用。不可达时静默跳过，零影响。**不需要用户提供任何凭证**——`Mcp-Session-Id` 是标准 MCP 协议的会话握手，由 Agent 自动完成 |
 | **搜索类 MCP** | 可选 | deep-dive 和主动 ingest 可用域数据 MCP 增强搜索质量。没有时退化为 WebSearch |
@@ -52,15 +34,12 @@ description: |
 ## Quick Start
 
 ```
-用户: /auto-wiki recall personal-pension
-Agent: [扫描 wiki/personal-pension/ → 读 hub 页面（{主题中文名}.md）→ 加载 data.db 摘要]
-Agent: 已进入 recall 模式。当前 wiki：22 页 / 8 数据点 / 2 处 contested。
-       接下来的问题我会先查 wiki 再回答。
-
-用户: 参与率低的原因是什么？
-Agent: [读 wiki 中 enrollment-friction、tax-incentive-effect 等页面]
-Agent: 根据 wiki 积累的 6 篇来源...（引用具体页面和数据）
-        注意：税优激励效果存在矛盾（77.8% vs 25%），详见 [[participation-willingness]]
+用户: /auto-wiki init
+Agent: 你拿到一份新材料后通常怎么处理、最后要产出什么？
+       再举三个以后会反复问这个知识库的问题。
+用户: 我读书后想沉淀概念和论点，以后会问……
+Agent: [再问第一份材料、更新节奏、查看器和数据边界 → 展示提案 → 用户确认]
+Agent: 已建库并完成首次 ingest。图谱报告：wiki/books/_report.html
 ```
 
 ## 核心理念
@@ -71,19 +50,50 @@ Agent 每天帮你做研究、写报告、拉数据——但做完就忘。下�
 
 不是 RAG（每次从文档堆里临时检索），是编译——Agent 读完源文件后，把关键信息写进 wiki 已有页面，和旧知识比较、合并、标注冲突。下次执行任何任务前，先读 wiki，从积累的基础上工作。
 
-## 四个模式
+## 七个模式
 
 | 模式 | 触发 | Agent 做什么 |
 |------|------|-------------|
+| **init** | `init` / “从零建库” / “搭建 Obsidian” | 访谈真实工作流 → 展示提案 → 建领域与契约 → 首次 ingest → 用真实问题验收 |
+| **source** | `source` / "根据索引找资料" / "取材" | 解析索引/钩子清单 → 动用全部取材通道 fan-out 搜原料 → 整合带溯源 → **落 Inbox/raw（不碰 wiki）** |
 | **recall** | `recall` / `recall {topic}` | 加载 wiki 上下文，后续所有问题先查 wiki 再回答 |
 | **ingest** | 用户提供源文件或文本 | 读源文件 → 搜索已有 wiki → 比较新旧 → 更新/创建页面 → 更新索引 |
 | **query** | 用户提问（单次） | 读 hub 页面 → 找相关页面 → 综合回答 → 有价值的分析可归档 |
 | **lint** | 用户说"检查 wiki" | 扫描全部页面 → 合并重复 → 归档过时 → 报告矛盾和健康度 |
 | **deep-dive** | `deep-dive` / "上强度" | 运行 Coverage lint → 展示缺口报告 → 用户确认 → 搜索 + ingest 填补缺口 |
 
-> deep-dive 不是第五个独立模式——它是 lint（Coverage）和 ingest（带搜索工具）的组合管道。需要搜索工具（主动模式）。
+> **source 与 deep-dive 都涉及向外搜索，但方向相反**：deep-dive 由 `lint(Coverage)` 自动找 wiki **内部缺口**、搜回来**直接 ingest**；source 由**人给的索引**驱动、向外 fan-out 取材、**停在 Inbox/raw 闸前**。source 的产出正是 ingest / deep-dive 的输入。deep-dive 不是独立模式（= lint+ingest 组合管道）；source 是独立模式（管道最前端的取材相）。
 
 recall 模式 vs query 的区别：query 是单次操作（问一个问题，查一次 wiki）。recall 模式是持续状态——进入后，这轮对话里的每个问题都先过 wiki。
+
+---
+
+## init 模式（首次建库）
+
+**详细协议见 `references/init-protocol.md`。**
+
+init 不让用户先学本体术语，而是从真实工作流和反复问题反推第一个领域、节点类型与关系。写入前只做一次提案确认；确认后复用 `new_domain.py`，按需应用 seed，完成首份材料 ingest，并用一个真实问题验收。实例约束落在 `{ops_dir}/onboarding.md`，供后续 source/ingest 读取。
+
+若用户只是想体验，使用 `examples/bookshelf/`；若用户要建立自己的库，不把示例知识混入用户数据。
+
+---
+
+## source 模式（取材 / 采集）
+
+**详细协议见 `references/source-protocol.md`。**
+
+管道最前端的取材相：人给一份**索引/钩子清单**，Agent 动用**全部取材通道** fan-out 搜原料，整合带溯源后**落 `Inbox/raw/`，不碰 wiki**（守 ingest 闸）。产出正是 ingest / deep-dive 的输入。
+
+简要流程：
+
+0. **路由**：读 `wiki/_index.md`，把索引每条钩子命中到域，按库配置决定取材通道。
+1. **拆索引**为原子查询（可检索的具体问题），列给用户过目可增删。
+2. **fan-out 取材**：按钩子命中选通道并行检索——**取材通道按库配置，见库内 CLAUDE.md「取材通道」节**；无库配置时用通用通道（WebSearch/WebFetch 等）兜底。一条查询尽量交叉 2+ 通道互证；数值走数据源工具不凭记忆。
+3. **收口整合**：每条原子查询一段「发现 + 溯源(标题+机构/作者+日期+链接) + 渠道可信度档」；多源冲突并列标 `contested`，**不在此裁决**。
+4. **落 Inbox/raw**：追加到来源笔记，或新建 `{date}-{slug}-取材.md`，frontmatter `compiled: false` + `取材通道` + `索引来源`。
+5. **报告**：每条钩子找到几条材料、覆盖/缺口、哪几条够 ingest 了。
+
+**纪律**：不碰 wiki、不动 data.db；溯源以「标题+机构+日期」为准（链接会过期）；渠道分档（一手 > 二手·权威 > 二手，黑名单跳过；库特有分档纪律见库内 CLAUDE.md）；不裁决分歧。
 
 ---
 
@@ -122,7 +132,8 @@ Agent 执行：
    - 引用具体页面：`[[slug]]`
    - 引用具体数据：值 + 单位 + 时段 + 来源
    - 如果涉及 contested 信息，主动标注
-   - 如果 wiki 中信息不足，明确说"wiki 中没有这方面的积累，建议 ingest XX"
+   - 如果 wiki 中信息不足，明确说"wiki 中没有这方面的积累，建议 ingest XX"，
+     并**登记 query-miss**（见 `query-protocol.md`「query-miss 登记」——误拒侧唯一观测点，漏记 = 检索质量永远无法度量）
 6. **不编造 wiki 中没有的信息**。宁可说"不知道"也不要假装 wiki 里有
 
 ### 退出
@@ -156,7 +167,7 @@ Agent 执行：
 
 **每个领域 wiki 的本体由它自己的 `wiki/{domain}/_ontology.md` 契约定义**（节点类型、受控关系词表、6 档时间模型、退役协议）；ingest/recall 前先读它。一个领域只用一种本体类型，不在同一领域里混用 cognitive 与 domain 结构。
 
-**如果 wiki 目录不存在**，先向用户确认创建位置（默认 `wiki/{topic}/`，在当前仓库根目录下），然后按 `references/storage-spec.md` 创建初始结构（含 meta.yaml、hub 页面模板、log.md 模板）。`wiki/` 纳入 git 版本管理、**不要**加入 `.gitignore`——它必须出现在 Obsidian 图谱中（禁止用 `.wiki/` 点目录，Obsidian 会隐藏 dotfolder）。
+**如果 wiki 目录不存在**，切换到 init，按 `references/init-protocol.md` 先访谈、展示提案并确认，再创建初始结构。不得跳过 init 直接猜用户的领域与关系。
 
 **领域种子（seed）**：如果目标领域有对应的种子文件（`seeds/{name}.md`），在 meta.yaml 中声明 `seed: {name}`。种子提供标准术语词表、关系模板和禁混规则，让 wiki 从规范化的起点开始生长。没有种子的领域，wiki 自由生长——两种路径都能跑。种子是社区可贡献的插件，任何人可以为自己的垂直领域写一个 markdown 文件。详见 `references/seed-ontologies.md`。
 
@@ -168,7 +179,9 @@ Agent 执行：
 
 | 操作 | 必读 | 首次时读 | 有工具时读 |
 |------|------|---------|-----------|
-| **ingest** | `ingest-protocol.md`, `wiki-format.md`, `schema.py` | `storage-spec.md`（wiki 不存在时）, `seed-ontologies.md` + `seeds/{name}.md`（meta.yaml 声明了 seed 时） | `fact-check.md`, `source-validation.md` |
+| **init** | `init-protocol.md`, `storage-spec.md` | `seed-ontologies.md` + 适用的 `seeds/{name}.md` | — |
+| **source** | `source-protocol.md` | — | `source-validation.md`（渠道分档/黑名单） |
+| **ingest** | `ingest-protocol.md`, `wiki-format.md`, `schema.py`, `precheck.py`（跑，不必读） | `storage-spec.md`（wiki 不存在时）, `seed-ontologies.md` + `seeds/{name}.md`（meta.yaml 声明了 seed 时） | `fact-check.md`, `source-validation.md` |
 | **query** | `query-protocol.md` | — | — |
 | **lint** | `lint-protocol.md`, `schema.py` | — | `validators/{name}.md`（seed 声明了 validator 时） |
 | **deep-dive** | `lint-protocol.md`, `ingest-protocol.md`, `source-validation.md`, `wiki-format.md`, `schema.py` | `storage-spec.md`（wiki 不存在时） | `fact-check.md` |
@@ -184,14 +197,14 @@ Agent 执行：
 1. **读取源文件**，提取关键信息
 2. **校验关键数据**（如有可用工具）— 详见 `references/fact-check.md`
 3. **写 source 摘要页**（`sources/{date}-{slug}.md`）
-4. **搜索 wiki 中已有的相关页面**（读 hub 页面，grep 关键实体名）
+4. **搜索 wiki 中已有的相关页面**（读 hub 页面，grep 关键实体名；机器辅助：`python references/precheck.py dup "{候选名}" --wiki wiki/{domain}` 输出同类型撞车候选——命中后建新页须在 log 写明不合并理由）
 5. **逐页比较新旧信息**：
    - 新信息**支持**已有结论 → 加引用，提升 confidence
    - 新信息**推翻**已有结论 → 数值写入 data.db（旧值自动进 history 表），改写正文分析
    - 新信息**矛盾**且无法判断 → 并列两种说法，confidence → `contested`
 6. **创建新页面**（仅当涉及 wiki 中没有的实体/概念）
 7. **更新 hub 页面 + 追加 log.md**
-8. **Schema 校验**——对本次创建/修改的所有页面运行 `python references/schema.py {page.md}`，确保 frontmatter 符合规范。不通过则立即修复再继续
+8. **五试预检**——对本次创建/修改的所有页面运行 `python references/precheck.py page {page.md}`（镜头S = schema 硬闸 + R11 四病根：双 yaml 块/枚举夹注/relations 键名/必填缺失）。error 必须修复再落库；镜头D 的撞车提示是 advisory，不拦截，但要回到第 5 步复核是否该合并
 
 Ingest 完成后向用户报告：
 ```
@@ -217,7 +230,7 @@ Ingest 完成后向用户报告：
 4. 如果涉及 contested 信息，明确标注矛盾
 5. 如果回答中包含有价值的新分析，提示用户归档
 
-**如果 wiki 中信息不足以回答**，明确说明缺口：
+**如果 wiki 中信息不足以回答**，明确说明缺口，并按 `query-protocol.md`「query-miss 登记」在 ops 目录记一行（路径经 `python references/instance.py .` 解析，不要猜）：
 ```
 wiki 中关于 XX 的信息不足，目前只有 2 篇相关源文件。
 建议 ingest 更多关于 XX 的材料。
@@ -286,9 +299,9 @@ Agent: 发现 6 个知识缺口：
 
 Agent: [搜索"股债联动 国债期货"...]
 Agent: 找到 2 个候选来源：
-       - [二手·权威] 某头部券商固收报告《股债联动分析》 ← 推荐
+       - [二手·权威] 中金固收报告《股债联动分析》 ← 推荐
        - [二手] 某公众号文章 ← 跳过（黑名单渠道）
-       确认使用该券商报告？
+       确认使用中金报告？
 
 用户: 确认
 
@@ -330,11 +343,13 @@ Skill 核心是领域无关的编译引擎。垂直领域的专业性通过两�
 **社区可贡献**：为你的垂直领域写一个 seed 文件（markdown），声明 20-50 个核心术语和禁混规则，就能让该领域的 wiki 从规范化起点生长。
 
 当前可用：
+- `seeds/reading-notes.md` — 读书、课程、论文、播客与通用学习
 - `seeds/fibo-pensions.md` — 企业年金/养老金（基于 FIBO 标准）
 - `validators/fibo-mcp.md` — FIBO SPARQL 逻辑校验（627K 推理三元组）
 
 ## 不做什么
 
+- **不深度依赖任何查看器**。产物是纯 markdown + SQLite；`_report.html`（`schema.py --report`）提供零依赖可视化。Obsidian / IDE / 文件管理器都是可选适配器（适配约定见 `storage-spec.md`「Obsidian 兼容」），引擎不要求任何查看器存在。
 - **不做向量检索**。小规模靠 hub 页面 + grep，大规模靠 SQLite FTS5 + BM25（见 `references/scaling.md`）。向量检索留给平台级工具。
 - **不做多用户协作**。wiki 目录是本地文件，一个用户一个 wiki。
 - **不替代专业数据工具**。领域数据获取用对应的 MCP/工具，本 Skill 只接住它们的产出并编译进 wiki。
@@ -351,3 +366,32 @@ Skill 核心是领域无关的编译引擎。垂直领域的专业性通过两�
 
 下次执行任务时，Agent 先读相关 wiki → 带着积累的知识工作
 ```
+
+## 导出：OKF 交换层（对外，单向）
+
+把某个领域投影成一个 **OKF v0.1 bundle**（Open Knowledge Format，
+GoogleCloudPlatform/knowledge-catalog）——markdown + frontmatter 目录的厂商中立
+最小知识交换格式，唯一必填项是 frontmatter 的 `type`。给非 Obsidian 工具、外部
+消费者、或想 `git` 交换知识时用。
+
+```
+python references/export_okf.py wiki/{domain}            # 默认输出到 <vault>/okf/{domain}/（wiki 树外，不进 Obsidian 图谱）
+python references/export_okf.py wiki/{domain} --out <dir> --name "<显示名>"
+```
+
+触发词：`导出 okf` / `export okf` / `生成交换包` / `对外交换格式`。
+
+**这是单向投影，不是平级存储**。本库的页面天生已满足 OKF（已带 `type`/`title`/
+`relations`），导出几乎无损：节点页 → concept 文档、目录类型 → OKF type、`[[wikilink]]`
+→ bundle 相对链接 `/dir/x.md`、Hub/类型目录 → `index.md`、`log.md` 原样合规。
+
+**会被压平的（OKF 没有它们的结构位置）**——导出脚本把这些标 ⚠️ 后做有损投影：
+- `data.db` 双时态层（T0 观测 / T1+T2 facts 拉链）→ 压成快照 markdown 表，丢 valid/
+  transaction 两轴、supersedes 链、退役历史；
+- 受控关系边的**类型**（`operated_by`/`bounds` 等）→ 链接本身无类型，类型降级进 prose；
+  `bound_role`(upper/lower/center) 等边属性丢失。
+
+**铁律：绝不反向以 OKF 为主存**——那会丢掉时间模型、类型边、可查询性这三样本库核心
+价值。严格内核（data.db + 受控词表 + 6 档时间模型）只在库内享用，OKF 只是「出入境
+口岸」。分类标签（`classified_as` 的 `价格型` 等，本库边非页）渲染成文字而非链接，
+脚本从 `.burrow/config.json` 的 `dashboard.labels` 读取这份清单。

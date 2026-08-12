@@ -19,6 +19,8 @@
 
 ## 主流程
 
+开工前，若实例存在 `{ops_dir}/onboarding.md`（路径由 `python <skill>/references/instance.py .` 解析），先读其中的真实工作流、回归问题、动态更新和数据/合规边界。它约束“为什么编译、哪些内容应持续更新、哪些材料不得联网或出机”；领域 `_ontology.md` 仍是节点与关系的权威契约。
+
 ```
 1. 读取源文件 → 写 来源/{date}-{slug}.md（不可变的忠实摘要）
    ├─ 提取关键信息：节点候选、关系、数值、结论、时间、事件
@@ -28,6 +30,9 @@
    ├─ 读目标领域 hub（{领域中文名}.md，例 宏观.md）拿全部页面列表
    ├─ 对每个候选名，比对现有页面的「文件名 slug」+「aliases 字段」
    │   （跨研报同物异名靠 aliases 收敛：OMO=7天逆回购、MDS=买断式逆回购、"重启/恢复"国债买卖）
+   ├─ 机器辅助：python references/precheck.py dup "{候选名}" --wiki wiki/{domain}
+   │   （镜头D 同类型撞车候选，advisory 不拦截；命中仍建新页时，log 须写明不合并理由。
+   │     跨类型高相似是提示不是撞车——来源页↔事件页等四界分建对是合法的）
    └─ 命中 → 走分支 A（已存在）；未命中 → 走分支 B（不存在）
 
    ┌─ A) 已存在 → 合并 / 按退役协议更新
@@ -51,7 +56,7 @@
 4. 补 / 退役受控关系边
    ├─ type 必须从目标领域受控词表选（macro：operated_by/implements/transmits_to/
    │   bounds/classified_as/instance_of/part_of/created_by/changed_by/references）
-   ├─ 双写：页面 frontmatter.relations[]（给 Obsidian 连边）+ data.db relations 表
+   ├─ 双写：页面 frontmatter.relations[]（给图谱类查看器连边，Obsidian 等）+ data.db relations 表
    └─ 关系撤销 = 给 relations 行写 valid_to + retract_event_slug，不删行
 
 5. 这篇研报落 分析/ + 更新 hub（{领域中文名}.md） + 追加 log.md
@@ -59,7 +64,7 @@
    ├─ hub：新页面加入对应分组，更新计数与 Last updated，不动已有条目描述
    └─ log.md append-only
 
-6. 跑 schema 校验（references/schema.py + data.db 表约束）
+6. 跑五试预检（references/precheck.py page {pages}——镜头S = schema 硬闸 + R11 四病根：双 yaml/枚举夹注/relations 键名/必填缺失；实例若配置 anchor_required，制度类 entity 新页另必填 anchor:/ground:（R9 设立依据）；data.db 表约束照旧）
 
 7. 刷新位置编码 + 报告（图谱校准布局）
    ├─ python references/position_encoding.py wiki/{domain}   → 重算 _positions.json
@@ -161,7 +166,7 @@ created: 2026-05-25
 updated: 2026-05-25
 sources: []
 confidence: high
-source_type: 二手          # 券商研报
+source_type: 二手·券商
 source_origin: 某券商研究所
 source_date: 2026-05-25
 ---
@@ -248,7 +253,7 @@ store.add_relation("7天逆回购", "价格型", "classified_as")
 
 ### Step 6 — schema 校验
 
-跑 `references/schema.py`(frontmatter 校验)+ data.db 表约束(`pages.type` 含 `event`、facts 拉链列完整、relations 时态列完整)。
+跑 `references/precheck.py page`(镜头S：schema 校验 + 四病根)+ data.db 表约束(`pages.type` 含 `event`、facts 拉链列完整、relations 时态列完整)。实例配置了 `anchor_required` 时，制度类 entity 新页缺 `anchor:`/`ground:` 会被 schema 闸拦下（R9 设立依据，硬）——起草时就把设立依据链上（anchor=依据法规/章程的来源页，ground=批文/登记的 T4 事件页）。
 
 ### Step 7 — 位置编码刷新（图谱校准布局）
 
@@ -260,6 +265,27 @@ python references/schema.py --report wiki/{domain}     # _report.html 自动启�
 ```
 
 `_positions.json` 是派生产物（如 `_report.html`），可随时重算，删了不影响本体；勿手改。
+
+### Step 8 — 留 run 档（活动留痕，交互/无人值守皆建）
+
+ingest 收尾后，在 `{ops_dir}/runs/` 建一份 run 档（`type: run`；ops_dir 经 `python references/instance.py .` 解析，陋居库=`08-Ops`、standalone=`wiki/_ops`），让 Dashboard「运行轨迹」与北极星条（陋居范式）认得这次编译——**交互会话同样要建，不是无人值守专属**（这是运行轨迹的唯一数据源；漏建 = 这次编译在主页不可见）。最小 frontmatter：
+
+```yaml
+---
+type: run
+routine: compile          # 描述性名：compile / compile-newdomain / compile-canon / deep-dive …
+run-id: {YYYY-MM-DD-HHMM}
+started: {ISO}
+finished: {ISO}
+status: ok                # ok / running / fail
+outputs: "一句话产出：新增/更新节点数、域、schema 结果"
+budget-spent: —
+escalations: 0
+policy: {python references/precheck.py stamp 的输出}   # 编译回执盖章：引擎版本+校验器哈希，误放归因用
+---
+```
+
+正文 `## 飞轮` 逐步记 `- HH:MM ✓ 步骤 · 细节 · 计数`（Dashboard 按此格式解析渲染）；高危写入裁决与审批账本 streak 变化一并记在对应步。无人值守：开跑先建 `status: running`、结束补全；交互：收尾一次性建 `status: ok` 即可。
 
 ---
 
