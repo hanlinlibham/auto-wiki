@@ -20,8 +20,8 @@ validator: validators/xxx.md    # 可选，关联的外部校验器
 
 | 标准概念 | 说明 | wiki 中的对应 |
 |---------|------|--------------|
-| ConceptA | ... | entities/ |
-| ConceptB | ... | concepts/ |
+| ConceptA | ... | `机构/` |
+| ConceptB | ... | `机制/` |
 
 ## 关系模板
 

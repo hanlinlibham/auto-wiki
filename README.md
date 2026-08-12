@@ -19,7 +19,7 @@
 >
 > **Other agents** — point them at `SKILL.md` and its `references/` directory.
 >
-> ℹ️ `auto-wiki-cn` is the only maintained edition (**v0.4.4+survey.1**, eight modes). The protocol
+> ℹ️ `auto-wiki-cn` is the only maintained edition (**v0.4.4+survey.2**, eight modes). The protocol
 > prose is Chinese; the Python tools under `references/` are language-neutral. The English
 > edition was **archived at v0.3.0** on 2026-08-12 — it still runs, but has no `init` or
 > `source` mode and no precheck gate. See
@@ -52,7 +52,7 @@
 >
 > **其他 Agent** — 让它读 `skill/auto-wiki-cn/SKILL.md` 及其 `references/` 目录即可。
 >
-> ℹ️ 中文版是唯一在维护的版本（**v0.4.4+survey.1**，八模式）。英文版已于 2026-08-12
+> ℹ️ 中文版是唯一在维护的版本（**v0.4.4+survey.2**，八模式）。英文版已于 2026-08-12
 > **归档在 v0.3.0**，移到 [`archive/auto-wiki-en-v0.3.0/`](archive/auto-wiki-en-v0.3.0/)
 > ——仍能跑，但没有 init 和 source 模式，也没有写入前预检。
 
@@ -204,7 +204,7 @@ python references/export_okf.py wiki/{领域}
 
 | 版本 | 目录 | 状态 |
 |------|------|------|
-| 中文 | `skill/auto-wiki-cn/` | **v0.4.4+survey.1** — 在维护。八模式（本版新增 survey 存量勘察；0.4.x 引入 init 访谈建库、source 取材）、五试预检、实例配置解耦、可运行示例 |
+| 中文 | `skill/auto-wiki-cn/` | **v0.4.4+survey.2** — 在维护。八模式（本版新增 survey 存量勘察；0.4.x 引入 init 访谈建库、source 取材）、五试预检、实例配置解耦、可运行示例 |
 | English | [`archive/auto-wiki-en-v0.3.0/`](archive/auto-wiki-en-v0.3.0/) | **v0.3.0 · 已归档（2026-08-12）** — 五模式，仍能跑但不再更新 |
 
 复制一个目录就能独立工作。英文版归档的原因和缺失清单见
@@ -422,7 +422,7 @@ This project builds on ideas and inspiration from:
 
 | Version | Directory | Status |
 |---------|-----------|--------|
-| Chinese | `skill/auto-wiki-cn/` | **v0.4.4+survey.1** — maintained. Eight modes (this edition adds `survey` structure-only recon of existing notes; 0.4.x added `init` and `source`), five-check precheck, decoupled instance config, runnable example |
+| Chinese | `skill/auto-wiki-cn/` | **v0.4.4+survey.2** — maintained. Eight modes (this edition adds `survey` structure-only recon of existing notes; 0.4.x added `init` and `source`), five-check precheck, decoupled instance config, runnable example |
 | English | [`archive/auto-wiki-en-v0.3.0/`](archive/auto-wiki-en-v0.3.0/) | **v0.3.0 · archived 2026-08-12** — five modes, still runs, no longer updated |
 
 Copy one directory and it works standalone. The English edition was archived rather than

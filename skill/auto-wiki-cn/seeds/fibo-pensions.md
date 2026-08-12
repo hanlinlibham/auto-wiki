@@ -18,11 +18,11 @@ validator: validators/fibo-mcp.md
 
 | 标准概念 | 说明 | wiki 中通常对应 |
 |---------|------|----------------|
-| LegalEntity | 法人实体 | entities/ 下的机构页面 |
-| Contract | 合同/协议 | concepts/ 下的制度页面 |
-| FinancialInstrument | 金融工具 | entities/ 下的产品页面 |
-| RegulatoryAgency | 监管机构 | entities/ |
-| Jurisdiction | 管辖区域 | concepts/ |
+| LegalEntity | 法人实体 | `机构/` 下的机构页面 |
+| Contract | 合同/协议 | `机制/` 下的制度页面 |
+| FinancialInstrument | 金融工具 | `工具/` 下的产品页面 |
+| RegulatoryAgency | 监管机构 | `机构/` |
+| Jurisdiction | 管辖区域 | `机制/` |
 | DatePeriod | 时间段 | frontmatter 的时间字段 |
 
 ## 商业实体（FIBO-BP）
