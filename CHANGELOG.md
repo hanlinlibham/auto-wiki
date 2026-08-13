@@ -1,5 +1,21 @@
 # Changelog
-## 0.4.4+survey.2.scaling.1 — 2026-08-13
+## 0.4.4+survey.2.scaling.2 — 2026-08-13
+
+scaling.1 的收尾补丁：三处回流遗漏 + 一处硬编码清理。
+
+### Fixed
+- `references/new_domain.py`：删掉 scaling.1 回流时引入的重复 `args = ap.parse_args()`
+  （重复解析无害但属实错），并补上母本的「L1 分层已就位」建域提示行。
+- `references/ingest-protocol.md` Step 5：收尾措辞与 scaling.1 的协议口径对齐——
+  由「更新 hub 分组与计数」改为「跑 `regen_index.py` 重建索引」（scaling.1 漏改的最后一处）。
+- README：三处版本徽标从 `v0.4.4+survey.2` 更新为当前版本（scaling.1 只改了其中一处）。
+
+### Changed
+- `validators/fibo-mcp.md`（中文版与归档英文版）：示例端点从硬编码 IP 改为
+  `http://<your-fibo-mcp-host>/mcp` 占位符——该 IP 是维护者私有部署，即将下线，
+  公开文档不应引导任何人访问它；自部署方式见上游 NeuroFusionAI/fibo-mcp。
+
+
 
 来源：真实使用反馈（个人阅读库 713 页，hub 涨到 104 KB / 700+ 行）。
 根因是引擎把「hub = 全量页面清单」当默认契约，而没有任何一层在规模增长时自动收敛——

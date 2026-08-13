@@ -1,7 +1,7 @@
 ---
 name: auto-wiki
 metadata:
-  version: "0.4.4+survey.2.scaling.1"
+  version: "0.4.4+survey.2.scaling.2"
 description: |
   把源材料增量编译为持久化 Markdown + SQLite wiki，实现跨会话知识积累。用于建立或使用个人/领域知识库、Obsidian wiki，以及取材、编译、查询和治理已有 wiki。八模式按意图路由：
   survey（我已经有笔记了、勘察存量、冷启动、看看我现有的资料）→ 只读结构扫已有目录，反推 init 提案与种子草案，不建库不写盘；

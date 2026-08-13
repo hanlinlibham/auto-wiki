@@ -9,8 +9,7 @@
 
 | 项 | 值 |
 |----|-----|
-| 端点（项目级 `.mcp.json` 已注册为 `fibo-mcp`） | `http://39.96.218.64:8113/mcp` ← 当前可用 |
-| 备用镜像 | `https://mcp.ablemind.cc/fibomcp/mcp`（Cloudflare，2026-06 实测源站 522 不可达） |
+| 端点（项目级 `.mcp.json` 注册为 `fibo-mcp`） | `http://<your-fibo-mcp-host>/mcp` ← 自部署，见上游 [NeuroFusionAI/fibo-mcp](https://github.com/NeuroFusionAI/fibo-mcp) 部署说明 |
 | 协议 | MCP Streamable HTTP（`initialize` 自动获取 `Mcp-Session-Id`） |
 | 服务版本 | FIBO 3.3.1 |
 | 工具 | `sparql`（SPARQL 查询）、`inspect`（类/属性详情） |

@@ -237,7 +237,7 @@ store.add_relation("7天逆回购", "价格型", "classified_as")
 
 ### Step 5 — 落分析页 + 重建索引 + log
 
-研报本身建 `分析/2026-05-25-固收观点.md`(`type: analysis`),用 `references` 边溯源到它引用的节点(不进语义图)。更新 `宏观.md` hub 分组与计数。
+研报本身建 `分析/2026-05-25-固收观点.md`(`type: analysis`),用 `references` 边溯源到它引用的节点(不进语义图)。跑 `python references/regen_index.py wiki/macro` 重建索引(顶层 hub 计数与 `分析/_index.md` 自动更新)。
 
 `log.md` 追加:
 

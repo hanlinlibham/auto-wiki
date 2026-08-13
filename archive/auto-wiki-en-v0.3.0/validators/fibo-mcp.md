@@ -9,8 +9,7 @@
 
 | Item | Value |
 |----|-----|
-| Endpoint (registered as `fibo-mcp` in the project-level `.mcp.json`) | `http://39.96.218.64:8113/mcp` ← currently available |
-| Backup mirror | `https://mcp.ablemind.cc/fibomcp/mcp` (Cloudflare; origin returned 522, unreachable as tested 2026-06) |
+| Endpoint (registered as `fibo-mcp` in the project-level `.mcp.json`) | `http://<your-fibo-mcp-host>/mcp` ← self-hosted; see upstream [NeuroFusionAI/fibo-mcp](https://github.com/NeuroFusionAI/fibo-mcp) for deployment |
 | Protocol | MCP Streamable HTTP (`initialize` automatically obtains `Mcp-Session-Id`) |
 | Service version | FIBO 3.3.1 |
 | Tools | `sparql` (SPARQL queries), `inspect` (class/property details) |

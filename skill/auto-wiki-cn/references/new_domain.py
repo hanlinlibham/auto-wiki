@@ -280,6 +280,7 @@ def create_domain(args) -> None:
     print(f"  类型子目录：{', '.join(types)}")
     print(f"  data.db 已建表 | meta.yaml/_ontology.md/{hub}.md/log.md 已生成")
     print(f"  wiki/_index.md 已重建（{args.direction} 方向）")
+    print(f"  L1 分层已就位：顶层 hub 为导航页，各类型 _index.md 承载清单")
     print(f"  出生戳：auto-wiki@{INST['engine_version']}（meta.yaml born_of）")
     if args.seed and args.seed != "none":
         print(f"  冷启动种子：{args.seed}")
@@ -305,7 +306,6 @@ def main():
                          "Obsidian 在图谱面板里改任何设置都会回写覆盖该文件，失效时重跑本项")
     args = ap.parse_args()
 
-    args = ap.parse_args()
     if args.graph:
         src = Path(__file__).resolve().parent.parent / "assets" / "obsidian" / "graph.json"
         if not src.is_file():
