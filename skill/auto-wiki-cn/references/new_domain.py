@@ -119,7 +119,13 @@ tags: [ontology, contract]
 
 
 def hub_md(name, direction, central, hub, types) -> str:
-    sections = "\n".join(f"## {t}\n- \n" for t in types)
+    """顶层 hub 一律生成 L1 导航骨架，不生成全量清单。
+
+    理由：hub 若承载"每页一行"的清单，页面数一涨它就线性膨胀，而 recall/ingest
+    每次都整读它 —— 上下文随库大小无上限增长。清单归各类型 _index.md，
+    顶层只留计数与入口，读一次的代价与库大小解耦。重建用 regen_index.py。
+    """
+    rows = "\n".join(f"| {t} | 0 | [[{t}/_index\\|{t}索引]] |" for t in types)
     return f"""---
 title: {hub}
 type: ontology
@@ -129,16 +135,41 @@ updated: '{TODAY}'
 tags: [hub, moc]
 ---
 
-# {hub}领域 Wiki
+# {hub}领域 Wiki · 导航
 
 > 中心实体 [[{central}]] · 本体契约见 [[_ontology]] · 数据见 data.db · 方向：{direction}
+
+> **本页是导航，不是清单。**页面明细在各类型的 `_index.md`，全文检索用 `fts_index.py`。
+> 读本页即可定位到类型，**不要把子索引整读进上下文**。
+> 计数与入口由 `python references/regen_index.py wiki/{name}` 重建，勿手改。
+
+## 分类入口
+
+| 类型 | 页数 | 入口 |
+|---|---|---|
+{rows}
 
 ## 知识结构
 ```
 （首次 ingest 后补：中心实体辐射图）
 ```
+"""
 
-{sections}"""
+
+def sub_index_md(hub, t) -> str:
+    return f"""---
+title: {t}索引
+type: index
+updated: '{TODAY}'
+tags: [hub, moc, index]
+---
+
+# {t} · 子索引（自动生成）
+
+> 由 `regen_index.py` 重建，**勿手改**。共 0 页 · 返回 [[{hub}]]
+
+（尚无页面）
+"""
 
 
 def log_md(name, hub) -> str:
@@ -224,6 +255,8 @@ def create_domain(args) -> None:
         sub = ddir / t
         sub.mkdir()
         (sub / ".gitkeep").write_text("", encoding="utf-8")
+        # L1 分层从第一天就位：新库不留"全量 hub"这条膨胀路径
+        (sub / "_index.md").write_text(sub_index_md(hub, t), encoding="utf-8")
 
     # 2. data.db（幂等建表）
     s = store.WikiStore(str(ddir))
@@ -267,7 +300,24 @@ def main():
     ap.add_argument("--coverage", default="none", help="校验器覆盖度（partial/full/none）")
     ap.add_argument("--seed", default="none", help="冷启动种子名（如 reading-notes；默认 none）")
     ap.add_argument("--reindex", action="store_true", help="只重建 wiki/_index.md")
+    ap.add_argument("--graph", action="store_true",
+                    help="（重新）写入 Obsidian 图谱配置到 wiki/.obsidian/graph.json —— "
+                         "Obsidian 在图谱面板里改任何设置都会回写覆盖该文件，失效时重跑本项")
     args = ap.parse_args()
+
+    args = ap.parse_args()
+    if args.graph:
+        src = Path(__file__).resolve().parent.parent / "assets" / "obsidian" / "graph.json"
+        if not src.is_file():
+            print(f"✗ 找不到模板：{src}", file=sys.stderr)
+            sys.exit(1)
+        dst_dir = WIKI / ".obsidian"
+        dst_dir.mkdir(parents=True, exist_ok=True)
+        (dst_dir / "graph.json").write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+        print(f"✓ 图谱配置已写入 {dst_dir / 'graph.json'}")
+        print("  过滤已排除 hub 与 _index 子索引，避免索引页变成超级中心节点")
+        print("  ⚠️ Obsidian 在图谱面板中改动过滤/颜色会回写覆盖此文件，失效时重跑 --graph")
+        return
 
     if args.reindex:
         reindex()

@@ -1,15 +1,28 @@
 # Wiki 扩容方案
 
-> 默认模式（grep + hub 页面）适用于 < 500 页。超过后启用 SQLite 索引层。
 > 零额外依赖——Python 3 自带 sqlite3 + FTS5。
+>
+> **本文档描述方案；执行用两个装好即用的脚本，不要照抄下面的片段：**
+>
+> | 用途 | 命令 |
+> |---|---|
+> | L1 重建分层索引（顶层 hub 瘦身 + 各类型 `_index.md`） | `python references/regen_index.py wiki/{domain}` |
+> | 规模体检（不写盘，超阈值打 WARN；ingest 收尾调用） | `python references/regen_index.py wiki/{domain} --check` |
+> | L2 建全文索引 | `python references/fts_index.py wiki/{domain} build` |
+> | L2 检索（BM25 排序，可 `--type` 限定类型） | `python references/fts_index.py wiki/{domain} search "关键词"` |
+>
+> **为什么必须分层**：hub 若承载"每页一行"的全量清单，它随页面数线性增长，
+> 而 recall/ingest 每次都整读它——上下文开销随库大小无上限膨胀。
+> 实测：713 页的库，hub 达 104 KB / 700+ 行；分层后顶层降到约 2 KB。
+> 新库由 `new_domain.py` 直接生成 L1 骨架，从第一天就没有这条膨胀路径。
 
 ## 三档检索策略
 
 | 档位 | 页面数 | 检索方式 | 触发条件 |
 |------|--------|---------|---------|
-| L0 | < 50 | 读 hub 页面 + 直接读页面 | 默认 |
-| L1 | 50-500 | 分层 hub 页面 + grep 关键词 | 页面数 > 50 时自动切换 |
-| L2 | 500+ | SQLite FTS5 + BM25 排序 | 页面数 > 500 或用户手动启用 |
+| L0 | < 50 | 读 hub + 相关类型 `_index.md` + 直接读页面 | 默认 |
+| L1 | 50-500 | 分层索引（`regen_index.py`）+ grep 关键词 | 新库默认即为分层结构 |
+| L2 | 500+ | SQLite FTS5 + BM25（`fts_index.py`） | 页面数 > 500（`--check` 会 WARN） |
 
 ---
 

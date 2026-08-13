@@ -1,12 +1,19 @@
 {
   "collapse-filter": false,
-  "search": "path:wiki/ -path:log -path:_ontology",
+  "search": "path:wiki/ -path:log -path:_ontology -tag:#hub -file:_index",
   "showTags": false,
   "showAttachments": false,
   "hideUnresolved": false,
   "showOrphans": true,
   "collapse-color-groups": false,
   "colorGroups": [
+    {
+      "query": "[confidence:contested]",
+      "color": {
+        "a": 1,
+        "rgb": 14822182
+      }
+    },
     {
       "query": "path:人物 OR path:机构",
       "color": {

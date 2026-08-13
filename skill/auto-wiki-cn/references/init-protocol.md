@@ -127,7 +127,12 @@ Obsidian 只是查看器，两个选项产生相同的 Markdown + SQLite 知识�
    - 删除 `<填判据>`、`<填例子>` 和所有脚手架占位提示；
    - 不改写六档时间模型和退役协议。
 7. 用户选择 Obsidian 时：
-   - 把 `assets/obsidian/graph.json` 复制到 Vault 根目录 `.obsidian/graph.json`；
+   - 写入图谱配置：`python references/new_domain.py --graph`（等价于把 `assets/obsidian/graph.json`
+     复制到 Vault 根目录 `.obsidian/graph.json`）。该配置的过滤已排除 hub 与 `_index` 子索引，
+     否则索引页会成为链接全库的超级中心节点，把真实结构压成毛球；
+   - ⚠️ **Obsidian 会回写这个文件**：用户在 Graph View 里改过过滤/缩放/颜色，关闭面板时
+     Obsidian 就用运行态快照覆盖它（实测会清空 `search` 与 `colorGroups`）。
+     发现过滤或配色失效，重跑 `--graph` 即可，这是幂等操作；
    - 告诉用户在 Obsidian 选择 **Open folder as vault**，打开的是 Vault 根目录，不是单个领域目录；
    - 不要求安装插件。
 8. 用户提供了第一份材料时，立即执行标准 ingest；没有材料则保留空库。

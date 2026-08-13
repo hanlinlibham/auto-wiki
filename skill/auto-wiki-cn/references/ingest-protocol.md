@@ -27,7 +27,7 @@
    └─ frontmatter 记 source_type / source_origin / source_date
 
 2. 逐项抽名词 → 先查 canonical（含 aliases）是否已存在 关键改动
-   ├─ 读目标领域 hub（{领域中文名}.md，例 宏观.md）拿全部页面列表
+   ├─ 读目标领域 hub（{领域中文名}.md，例 宏观.md）定位类型 → 只读相关 {类型}/_index.md 拿候选页面（>500 页用 fts_index.py search）
    ├─ 对每个候选名，比对现有页面的「文件名 slug」+「aliases 字段」
    │   （跨研报同物异名靠 aliases 收敛：OMO=7天逆回购、MDS=买断式逆回购、"重启/恢复"国债买卖）
    ├─ 机器辅助：python references/precheck.py dup "{候选名}" --wiki wiki/{domain}
@@ -59,9 +59,9 @@
    ├─ 双写：页面 frontmatter.relations[]（给图谱类查看器连边，Obsidian 等）+ data.db relations 表
    └─ 关系撤销 = 给 relations 行写 valid_to + retract_event_slug，不删行
 
-5. 这篇研报落 分析/ + 更新 hub（{领域中文名}.md） + 追加 log.md
+5. 这篇研报落 分析/ + 重建索引（regen_index.py） + 追加 log.md
    ├─ 研报本身建 分析/{date}-{slug}.md（type: analysis），用 references 边溯源到它引用的节点
-   ├─ hub：新页面加入对应分组，更新计数与 Last updated，不动已有条目描述
+   ├─ 索引：跑 `python references/regen_index.py wiki/{domain}` 重建类型子索引与顶层计数；**不手写清单进 hub**；命令输出 WARN 时按提示启用 L2
    └─ log.md append-only
 
 6. 跑五试预检（references/precheck.py page {pages}——镜头S = schema 硬闸 + R11 四病根：双 yaml/枚举夹注/relations 键名/必填缺失；实例若配置 anchor_required，制度类 entity 新页另必填 anchor:/ground:（R9 设立依据）；data.db 表约束照旧）
@@ -235,7 +235,7 @@ store.add_relation("7天逆回购", "价格型", "classified_as")
 
 页面 frontmatter 同步写 `relations:`,两侧一致。
 
-### Step 5 — 落分析页 + 更新 hub + log
+### Step 5 — 落分析页 + 重建索引 + log
 
 研报本身建 `分析/2026-05-25-固收观点.md`(`type: analysis`),用 `references` 边溯源到它引用的节点(不进语义图)。更新 `宏观.md` hub 分组与计数。
 

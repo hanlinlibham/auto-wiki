@@ -204,7 +204,7 @@ python references/export_okf.py wiki/{领域}
 
 | 版本 | 目录 | 状态 |
 |------|------|------|
-| 中文 | `skill/auto-wiki-cn/` | **v0.4.4+survey.2** — 在维护。八模式（本版新增 survey 存量勘察；0.4.x 引入 init 访谈建库、source 取材）、五试预检、实例配置解耦、可运行示例 |
+| 中文 | `skill/auto-wiki-cn/` | **v0.4.4+survey.2.scaling.1** — 在维护。八模式（survey 存量勘察、init 访谈建库、source 取材）、五试预检、L1/L2 分层索引、实例配置解耦、可运行示例 |
 | English | [`archive/auto-wiki-en-v0.3.0/`](archive/auto-wiki-en-v0.3.0/) | **v0.3.0 · 已归档（2026-08-12）** — 五模式，仍能跑但不再更新 |
 
 复制一个目录就能独立工作。英文版归档的原因和缺失清单见
@@ -212,6 +212,27 @@ python references/export_okf.py wiki/{领域}
 
 `references/` 下的 Python 工具与语言无关。读英文但想要最新能力的话，直接取中文版：
 代码是同一套，只有协议散文是中文。英文版 0.4.x 的移植欢迎以贡献形式提交。
+
+### 设计依据与参考文献
+
+本项目的每条纪律都可追溯到一份公开文献——规矩是从这些脉络里编译出来的，不是发明出来的。
+下表：思想来源 → 它在本项目中的落地条款 → 原始文献（IEEE 著录，标题保留原语言）。
+
+| 来源 | 落地条款 | 文献 |
+|---|---|---|
+| 蒯因：存在＝约束变项的值 | 建页先答"谁会查询它"，答不出就不建页 | W. V. O. Quine, "On What There Is," *Rev. Metaphys.*, vol. 2, no. 5, pp. 21–38, 1948. |
+| 克里普克：刚性指称 | 明年同名仍指同一对象才算实体；描述不是名字 | S. A. Kripke, *Naming and Necessity*. Cambridge, MA, USA: Harvard Univ. Press, 1980.（1970 讲演） |
+| 塞尔：制度事实 | 制度实体的身份变更必须由事件盖章 | J. R. Searle, *The Construction of Social Reality*. New York, NY, USA: Free Press, 1995. |
+| Guarino & Welty：元性质（OntoClean） | 机构与角色不许混——角色反刚性，不得收容刚性类型 | N. Guarino and C. Welty, "Evaluating ontological decisions with OntoClean," *Commun. ACM*, vol. 45, no. 2, pp. 61–65, Feb. 2002. |
+| 西德尔：四维持存（工程同源：双时态数据库） | 退役不删除：旧结论是时间轴上的一段，封存不销毁 | T. Sider, *Four-Dimensionalism: An Ontology of Persistence and Time*. Oxford, U.K.: Oxford Univ. Press, 2001. |
+| 波普尔：可证伪 + 世界3 | 断言写明"什么能推翻它"；分析页是派生视图，删了不伤事实层 | K. R. Popper, *Logik der Forschung*. Wien, Österreich: Julius Springer, 1934.〔德文原版〕<br>K. R. Popper, *Objective Knowledge: An Evolutionary Approach*. Oxford, U.K.: Clarendon Press, 1972. |
+| Rissanen：最短描述长度（MDL） | 新页必须引入新的独立方向，否则并回旧页 | J. Rissanen, "Modeling by shortest data description," *Automatica*, vol. 14, no. 5, pp. 465–471, Sep. 1978. |
+
+**编译论题**（由本项目提出，2026；工程同源：知识编译）：同一个问题会被问很多次；与其每次
+从头推一遍，不如在写入时一次把它结构化——问到第 N 次之后，那次结构化的成本就摊平了。
+这是本项目自己的命题，**无外部文献出处，不冒充经典**；计算机领域同源的既有工作见
+A. Darwiche and P. Marquis, "A knowledge compilation map," *J. Artif. Intell. Res.*, vol. 17,
+pp. 229–264, 2002（该工作编译的是逻辑知识库，本项目编译的是研究工作流）。
 
 ### 致谢
 
@@ -401,6 +422,30 @@ Projects a domain into an [OKF v0.1](https://github.com/GoogleCloudPlatform/know
 - Optional: WebSearch capability for autonomous research and `source` mode
 
 The passive path — you supply files, the agent compiles them — needs only Python 3 and file I/O. Every network call is an optional enhancement.
+
+## Design Rationale & References
+
+Every discipline in this project traces to published work — the rules were compiled from these
+lineages, not invented. Source idea → how it lands here → original reference (IEEE style,
+titles in their original language).
+
+| Source | How it lands here | Reference |
+|---|---|---|
+| Quine: to be is to be the value of a bound variable | A page is created only if you can name the query it answers | W. V. O. Quine, "On What There Is," *Rev. Metaphys.*, vol. 2, no. 5, pp. 21–38, 1948. |
+| Kripke: rigid designation | An entity must still denote the same thing under the same name next year | S. A. Kripke, *Naming and Necessity*. Cambridge, MA, USA: Harvard Univ. Press, 1980. (Lectures 1970.) |
+| Searle: institutional facts | Identity changes of institutional entities require an event to stamp them | J. R. Searle, *The Construction of Social Reality*. New York, NY, USA: Free Press, 1995. |
+| Guarino & Welty: meta-properties (OntoClean) | Institutions and roles must not be conflated; anti-rigid roles cannot subsume rigid types | N. Guarino and C. Welty, "Evaluating ontological decisions with OntoClean," *Commun. ACM*, vol. 45, no. 2, pp. 61–65, Feb. 2002. |
+| Sider: four-dimensional persistence (engineering analogue: bitemporal databases) | Retire, never delete: a superseded conclusion is a temporal part, sealed rather than destroyed | T. Sider, *Four-Dimensionalism: An Ontology of Persistence and Time*. Oxford, U.K.: Oxford Univ. Press, 2001. |
+| Popper: falsifiability + World 3 | Claims state what would refute them; analysis pages are derived views, safe to delete | K. R. Popper, *Logik der Forschung*. Wien, Österreich: Julius Springer, 1934. [German original]<br>K. R. Popper, *Objective Knowledge: An Evolutionary Approach*. Oxford, U.K.: Clarendon Press, 1972. |
+| Rissanen: minimum description length | A new page must add an independent dimension, otherwise it merges back | J. Rissanen, "Modeling by shortest data description," *Automatica*, vol. 14, no. 5, pp. 465–471, Sep. 1978. |
+
+**The Compilation Thesis** (proposed by this project, 2026; engineering analogue: knowledge
+compilation): the same question gets asked many times; rather than re-deriving the answer on
+every query, pay once at write time to structure it — past the Nth ask, that one-time cost has
+amortized. This is our own proposition with **no external source, and it does not pose as a
+classic**. The adjacent prior work in computer science is A. Darwiche and P. Marquis,
+"A knowledge compilation map," *J. Artif. Intell. Res.*, vol. 17, pp. 229–264, 2002 — they
+compile logical knowledge bases; this project compiles a research workflow.
 
 ## Acknowledgements
 

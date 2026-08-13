@@ -1,7 +1,7 @@
 ---
 name: auto-wiki
 metadata:
-  version: "0.4.4+survey.2"
+  version: "0.4.4+survey.2.scaling.1"
 description: |
   把源材料增量编译为持久化 Markdown + SQLite wiki，实现跨会话知识积累。用于建立或使用个人/领域知识库、Obsidian wiki，以及取材、编译、查询和治理已有 wiki。八模式按意图路由：
   survey（我已经有笔记了、勘察存量、冷启动、看看我现有的资料）→ 只读结构扫已有目录，反推 init 提案与种子草案，不建库不写盘；
@@ -60,7 +60,7 @@ Agent 每天帮你做研究、写报告、拉数据——但做完就忘。下�
 | **source** | `source` / "根据索引找资料" / "取材" | 解析索引/钩子清单 → 动用全部取材通道 fan-out 搜原料 → 整合带溯源 → **落 Inbox/raw（不碰 wiki）** |
 | **recall** | `recall` / `recall {topic}` | 加载 wiki 上下文，后续所有问题先查 wiki 再回答 |
 | **ingest** | 用户提供源文件或文本 | 读源文件 → 搜索已有 wiki → 比较新旧 → 更新/创建页面 → 更新索引 |
-| **query** | 用户提问（单次） | 读 hub 页面 → 找相关页面 → 综合回答 → 有价值的分析可归档 |
+| **query** | 用户提问（单次） | 读 hub 定位类型 → 子索引/全文检索找页面 → 综合回答 → 有价值的分析可归档 |
 | **lint** | 用户说"检查 wiki" | 扫描全部页面 → 合并重复 → 归档过时 → 报告矛盾和健康度 |
 | **deep-dive** | `deep-dive` / "上强度" | 运行 Coverage lint → 展示缺口报告 → 用户确认 → 搜索 + ingest 填补缺口 |
 
@@ -140,7 +140,9 @@ Agent 执行：
 
 1. **扫描 `wiki/` 目录**，列出可用的 wiki 主题
 2. 如果用户指定了主题 → 加载该 wiki；如果没指定 → 列出可选主题让用户选
-3. **读 hub 页面**（`{主题中文名}.md`，即 wiki 根目录下与 meta.yaml `name` 对应的主页面）→ 获取全部页面列表和结构
+3. **读 hub 页面**（`{主题中文名}.md`）→ **只用于导航**：拿到类型与计数，不是拿全部页面清单。
+   页面明细在 `{类型}/_index.md`，按需只读相关类型那一份；页数 > 500 时改用 `python references/fts_index.py wiki/{topic} search "关键词"`。
+   **上下文纪律：任何时候都不要把整库清单读进来**——它随库大小线性增长，是上下文膨胀的唯一入口。
 4. **读 data.db 摘要** → `python references/store.py dump wiki/{topic}/`，获取数据点数、关系数、contested 数
 5. **向用户报告**：
    ```
@@ -155,7 +157,7 @@ Agent 执行：
 进入recall 模式后，每次收到用户问题：
 
 1. **从问题中提取关键词**（实体名、概念名、指标名）
-2. **在 hub 页面中匹配**相关页面（标题 + 描述）
+2. **定位相关页面**：读 hub 判断落在哪个类型 → 只读该类型的 `_index.md` 匹配（标题 + 一行描述）；大库直接用 `fts_index.py search`
 3. **在 data.db 中查询**相关数据点：
    ```sql
    SELECT * FROM data_points WHERE field LIKE '%关键词%' OR page_slug LIKE '%关键词%'
@@ -231,13 +233,13 @@ Agent 执行：
 1. **读取源文件**，提取关键信息
 2. **校验关键数据**（如有可用工具）— 详见 `references/fact-check.md`
 3. **写 source 摘要页**（`sources/{date}-{slug}.md`）
-4. **搜索 wiki 中已有的相关页面**（读 hub 页面，grep 关键实体名；机器辅助：`python references/precheck.py dup "{候选名}" --wiki wiki/{domain}` 输出同类型撞车候选——命中后建新页须在 log 写明不合并理由）
+4. **搜索 wiki 中已有的相关页面**（读 hub 定位类型 → 只读该类型 `_index.md`，或 `fts_index.py search`；grep 关键实体名；机器辅助：`python references/precheck.py dup "{候选名}" --wiki wiki/{domain}` 输出同类型撞车候选——命中后建新页须在 log 写明不合并理由）
 5. **逐页比较新旧信息**：
    - 新信息**支持**已有结论 → 加引用，提升 confidence
    - 新信息**推翻**已有结论 → 数值写入 data.db（旧值自动进 history 表），改写正文分析
    - 新信息**矛盾**且无法判断 → 并列两种说法，confidence → `contested`
 6. **创建新页面**（仅当涉及 wiki 中没有的实体/概念）
-7. **更新 hub 页面 + 追加 log.md**
+7. **重建索引 + 追加 log.md** —— `python references/regen_index.py wiki/{domain}`（重建各类型 `_index.md` 与顶层导航计数；超阈值会打 WARN，按提示上 `fts_index.py`）。**不要手写清单进 hub。**
 8. **五试预检**——对本次创建/修改的所有页面运行 `python references/precheck.py page {page.md}`（镜头S = schema 硬闸 + R11 四病根：双 yaml 块/枚举夹注/relations 键名/必填缺失）。error 必须修复再落库；镜头D 的撞车提示是 advisory，不拦截，但要回到第 5 步复核是否该合并
 
 Ingest 完成后向用户报告：
@@ -253,7 +255,7 @@ Ingest 完成后向用户报告：
 
 **详细协议见 `references/query-protocol.md`。**
 
-1. 读 hub 页面，识别与问题相关的页面
+1. 读 hub 定位类型 → 只读相关类型的 `_index.md` 识别候选页面（大库用 `fts_index.py search`）
 2. 读取匹配页面 + 沿 wikilink 展开一层关联页面
 3. 基于页面内容综合回答，**引用来源页面**：
    ```
@@ -353,7 +355,7 @@ Agent: 补全完成。新建 2 页，更新 0 页，1 个缺口未能补全（�
 - domain 节点类型：**实体**（subtype 机构/工具/指标）· **概念-机制** · **事件** · **分析** · **来源**（cognitive wiki 另有 mental-model）
 - 数值绝不是节点（进 data.db）；分类标签是边不是页；关系用受控词表
 - 用 `[[slug]]` 做页面间链接（中文 slug = 文件名 = wikilink = data.db 主键）
-- hub 页面以**领域中文名**命名（如 `宏观.md`），是目录页 + 图谱中心；`log.md` 是操作日志
+- hub 页面以**领域中文名**命名（如 `宏观.md`），是**导航页**（类型 + 计数 + 入口，不放全量清单）；每个类型目录下 `_index.md` 是该类型清单，由 `regen_index.py` 生成；`log.md` 是操作日志
 
 ## 本体类型参考
 
@@ -384,7 +386,7 @@ Skill 核心是领域无关的编译引擎。垂直领域的专业性通过两�
 ## 不做什么
 
 - **不深度依赖任何查看器**。产物是纯 markdown + SQLite；`_report.html`（`schema.py --report`）提供零依赖可视化。Obsidian / IDE / 文件管理器都是可选适配器（适配约定见 `storage-spec.md`「Obsidian 兼容」），引擎不要求任何查看器存在。
-- **不做向量检索**。小规模靠 hub 页面 + grep，大规模靠 SQLite FTS5 + BM25（见 `references/scaling.md`）。向量检索留给平台级工具。
+- **不做向量检索**。小规模靠类型子索引 + grep，大规模靠 SQLite FTS5 + BM25（`references/fts_index.py`，方案见 `references/scaling.md`）。向量检索留给平台级工具。
 - **不做多用户协作**。wiki 目录是本地文件，一个用户一个 wiki。
 - **不替代专业数据工具**。领域数据获取用对应的 MCP/工具，本 Skill 只接住它们的产出并编译进 wiki。
 

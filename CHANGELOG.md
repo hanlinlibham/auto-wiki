@@ -1,4 +1,48 @@
 # Changelog
+## 0.4.4+survey.2.scaling.1 — 2026-08-13
+
+来源：真实使用反馈（个人阅读库 713 页，hub 涨到 104 KB / 700+ 行）。
+根因是引擎把「hub = 全量页面清单」当默认契约，而没有任何一层在规模增长时自动收敛——
+recall/ingest 每次整读 hub，**上下文随库大小线性膨胀且无上限**。
+
+### Added
+- `references/regen_index.py` —— L1 分层索引重建：各类型 `_index.md` + 顶层导航计数。
+  保留 hub 里人写的「知识结构」块；contested 页面顶到导航层单列；
+  `--check` 只体检不写盘（ingest 收尾调用），超阈值打 WARN 不阻断。
+- `references/fts_index.py` —— L2 全文索引，FTS5 + BM25，零额外依赖。
+  CJK 按字建索引、展示层还原成人话，`--type` 可限定类型。
+  取代 `scaling.md` 里原来的粘贴式代码片段。
+- `new_domain.py --graph` —— 幂等重放 Obsidian 图谱配置。
+
+### Changed
+- **`new_domain.py` 改生成 L1 骨架**：顶层 hub 只有类型/计数/入口（导航页），
+  建域时同时在各类型目录铺 `_index.md`。新库从第一天就没有「全量 hub」这条膨胀路径。
+- **协议口径统一为「hub = 导航，不是清单」**：`SKILL.md` 的 recall/query/ingest 三段、
+  `query-protocol.md`、`ingest-protocol.md` 全部改为「读 hub 定位类型 → 只读该类型子索引 →
+  页数 > 500 走 `fts_index.py`」，并加入一条上下文纪律：任何时候不把整库清单读进上下文。
+  ingest 收尾由「更新 hub 页面」改为「跑 `regen_index.py` 重建索引」。
+- `assets/obsidian/graph.json`：过滤补 `-tag:#hub -file:_index`（否则 hub 与子索引会成为
+  链接全库的超级中心节点，把真实结构压平），新增 `contested` 高亮组。
+- `init-protocol.md`：明写 **Obsidian 在图谱面板改任何设置都会回写覆盖 graph.json**，
+  失效时重跑 `--graph`。
+- `README`：新增「设计依据与参考文献」（中英双语，IEEE 著录）。**编译论题标明为本项目
+  自有命题、无外部出处、不冒充经典**，并列出计算机领域同源的既有工作。
+
+### 实测
+| 页面数 | 顶层 hub 体量 |
+|---|---|
+| 4（bookshelf 示例） | 1.0 KB |
+| 60 | 1.1 KB |
+| 520 | 1.1 KB |
+
+页面数涨 130 倍，顶层 hub 体量不变。`precheck page --strict` 与 `schema` 在含 `_index.md`
+的库上照常全过——索引页不会被当作知识页校验。
+
+### 版本号说明
+沿用本仓「基线 0.4.4 + 本仓增量」的口径：`+survey.2` 之后追加 `+scaling.1`，
+不冒充上游版本号。本次改动的协议面与母本 0.4.10 一致；`references/*.py` 中
+`precheck/schema/store/instance/position_encoding` 仍是本仓的独立实现
+（母本那几个依赖未公开的 `src/` 内核，直接照搬会让本仓无法独立运行）。
 
 ## 0.4.4+survey.2 — 2026-08-12
 
